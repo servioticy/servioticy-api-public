@@ -43,6 +43,23 @@ public class Paths {
   @Context
   private transient HttpServletRequest servletRequest;
   
+  
+  @GET
+  @Produces("application/json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response getAllSOs(@Context HttpHeaders hh) {
+    
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+    
+    CouchBase cb = new CouchBase();
+    String sos = cb.getAllSOs(user_id);
+    
+    return Response.ok(sos)
+           .header("Server", "api.compose")
+           .header("Date", new Date(System.currentTimeMillis()))
+           .build();
+  }  
+  
   @POST
   @Produces("application/json")
   @Consumes(MediaType.APPLICATION_JSON)
