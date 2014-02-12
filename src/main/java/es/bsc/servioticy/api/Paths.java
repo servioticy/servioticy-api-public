@@ -34,6 +34,7 @@ import javax.ws.rs.core.UriInfo;
 
 import es.bsc.servioticy.api_commons.data.CouchBase;
 import es.bsc.servioticy.api_commons.data.SO;
+import es.bsc.servioticy.api_commons.data.Subscription;
 import es.bsc.servioticy.api_commons.exceptions.ServIoTWebApplicationException;
 
 
@@ -78,6 +79,7 @@ public class Paths {
     CouchBase cb = new CouchBase();
     cb.setSO(so);
     
+    // Construct the response uri
     UriBuilder ub = uriInfo.getAbsolutePathBuilder();
     URI soUri = ub.path(so.getId()).build();
     
@@ -88,7 +90,6 @@ public class Paths {
              .build();
   }
 
-  
   @Path("/{soId}")
   @GET
   @Produces("application/json")
@@ -99,7 +100,6 @@ public class Paths {
     // Get the Service Object
     CouchBase cb = new CouchBase();
     SO storedSO = cb.getSO(user_id, so_id);
-    
     if (storedSO == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
     
@@ -108,5 +108,55 @@ public class Paths {
            .header("Date", new Date(System.currentTimeMillis()))
            .build();
   }
-  
+
+  @Path("/{soId}/streams/{streamId}/subscriptions")
+  @POST
+  @Produces("application/json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response createSubscription(@Context HttpHeaders hh, @PathParam("soId") String soId , 
+                    @PathParam("streamId") String streamId, String body) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+    
+    // Check if exists request data
+    if (body.isEmpty())
+      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+    
+    // Create Subscription
+    Subscription subs = new Subscription(user_id, soId, streamId, body);
+    
+    // Store in Couchbase
+    CouchBase cb = new CouchBase();
+    cb.setSubscription(subs);
+    
+    // Construct the access subscription URI
+    UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+    URI subsUri = ub.path(subs.getId()).build();
+
+    return Response.created(subsUri)
+             .entity(subs.getString())
+             .header("Server", "api.compose")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  } 
+
+	@Path("/{soId}/streams/{streamId}/subscriptions")
+	@GET
+	@Produces("application/json")
+	public Response getSubscriptions(@Context HttpHeaders hh, @PathParam("soId") String soId,
+										@PathParam("streamId") String streamId) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+		
+		// Get the Service Object
+		CouchBase cb = new CouchBase();
+		SO so = cb.getSO(user_id, soId);
+		if (so == null)
+			throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+		
+		return Response.ok(so.responseSubscriptions(streamId))
+					   .header("Server", "api.compose")
+					   .header("Date", new Date(System.currentTimeMillis()))
+					   .build();
+	}
 }
