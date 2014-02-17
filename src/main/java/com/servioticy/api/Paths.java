@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package es.bsc.servioticy.api;
+package com.servioticy.api;
 
 import java.net.URI;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -32,10 +34,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
-import es.bsc.servioticy.api_commons.data.CouchBase;
-import es.bsc.servioticy.api_commons.data.SO;
-import es.bsc.servioticy.api_commons.data.Subscription;
-import es.bsc.servioticy.api_commons.exceptions.ServIoTWebApplicationException;
+import com.servioticy.api.commons.data.CouchBase;
+import com.servioticy.api.commons.data.SO;
+import com.servioticy.api.commons.data.Subscription;
+import com.servioticy.api.commons.datamodel.Data;
+import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
+import com.servioticy.api.commons.utils.Config;
+import com.servioticy.queueclient.QueueClient;
+import com.servioticy.queueclient.QueueClientException;
 
 
 @Path("/public")
@@ -159,4 +165,56 @@ public class Paths {
 					   .header("Date", new Date(System.currentTimeMillis()))
 					   .build();
 	}
+	
+
+  @Path("/{soId}/streams/{streamId}")
+  @PUT
+  @Produces("application/json")
+  public Response updateSOData(@Context HttpHeaders hh, @PathParam("soId") String soId, 
+                    @PathParam("streamId") String streamId, String body) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+		
+    // Check if exists request data
+    if (body.isEmpty())
+      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+    
+    // Create Data
+    Data data = new Data(user_id, soId, streamId, body);
+
+    // Generate opId
+    String opId = UUID.randomUUID().toString().replaceAll("-", "");
+
+    // Queueing
+    QueueClient sqc;
+    try {
+      sqc = QueueClient.factory();
+      sqc.connect();
+      boolean res = sqc.put("{\"opid\": " + opId + ", \"soid\": " + soId + 
+          ", \"streamid\": " + streamId + ", \"su\": " + body);
+      if (!res) {
+        // TODO -> what to do with res = false
+      }
+      sqc.disconnect();
+
+    } catch (QueueClientException e) {
+      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, 
+          "SQueueClientException " + e.getMessage());
+    } catch (Exception e) {
+      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, 
+          "Undefined error in SQueueClient");
+    }
+    
+    // Store in Couchbase
+		CouchBase cb = new CouchBase();
+    cb.setData(data);
+    
+    // Set the opId
+    cb.setOpId(opId, Config.getOpIdExpiration());
+    
+    return Response.ok(body)
+             .header("Server", "api.compose")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
 }

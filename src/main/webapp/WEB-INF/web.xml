@@ -12,11 +12,11 @@
     <servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
     <init-param>
       <param-name>com.sun.jersey.config.property.packages</param-name>
-      <param-value>es.bsc.servioticy.api</param-value>
+      <param-value>com.servioticy.api</param-value>
     </init-param>
     <init-param>
       <param-name>com.sun.jersey.spi.container.ContainerRequestFilters</param-name>
-      <param-value>es.bsc.servioticy.api_commons.utils.AuthorizationRequestFilter</param-value>
+      <param-value>com.servioticy.api.commons.utils.AuthorizationRequestFilter</param-value>
     </init-param>
     <load-on-startup>1</load-on-startup>
   </servlet>
@@ -27,6 +27,6 @@
   </servlet-mapping>
 
   <listener>
-    <listener-class>es.bsc.servioticy.api_commons.utils.Config</listener-class>
+    <listener-class>com.servioticy.api.commons.utils.Config</listener-class>
   </listener>
 </web-app>
