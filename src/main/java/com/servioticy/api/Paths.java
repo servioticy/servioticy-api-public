@@ -261,4 +261,32 @@ public class Paths {
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
   }
+
+  @Path("/{soId}/streams/{streamId}/{opId}")
+  @PUT
+  @Produces("application/json")
+  public Response updateInternalSOData(@Context HttpHeaders hh, @PathParam("soId") String soId, 
+                    @PathParam("streamId") String streamId, @PathParam("opId") String opId, String body) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+    
+    // Check if exists request data
+    if (body.isEmpty())
+      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+    
+    // Create Data
+    Data data = new Data(user_id, soId, streamId, body);
+
+    // Store in Couchbase
+    CouchBase cb = new CouchBase();
+    cb.setData(data);
+    
+    // Set the opId
+    cb.setOpId(opId, Config.getOpIdExpiration());
+    
+    return Response.ok(body)
+             .header("Server", "api.compose")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
 }
