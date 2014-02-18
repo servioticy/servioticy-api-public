@@ -35,6 +35,7 @@ import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import com.servioticy.api.commons.data.CouchBase;
+import com.servioticy.api.commons.data.Group;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
 import com.servioticy.api.commons.datamodel.Data;
@@ -217,7 +218,6 @@ public class Paths {
              .build();
   }
   
-
   @Path("/{soId}/streams/{streamId}/lastUpdate")
   @GET
   @Produces("application/json")
@@ -234,6 +234,29 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "No data in the stream of the Service Object.");
     
     return Response.ok(data.lastUpdate().toString())
+             .header("Server", "api.compose")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+  
+  @Path("/groups/lastUpdate")
+  @POST
+  @Produces("application/json")
+  public Response getLastGroupUpdate(@Context HttpHeaders hh, String body) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+    
+    // Check if exists request data
+    if (body.isEmpty())
+      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+    
+    // Create Group petition
+    Group group = new Group(user_id, body);
+    
+//    if (group == null)
+//      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "No data in the stream of the Service Object.");
+    
+    return Response.ok(group.lastUpdate().toString())
              .header("Server", "api.compose")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
