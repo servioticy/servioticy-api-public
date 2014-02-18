@@ -165,7 +165,6 @@ public class Paths {
 					   .header("Date", new Date(System.currentTimeMillis()))
 					   .build();
 	}
-	
 
   @Path("/{soId}/streams/{streamId}")
   @PUT
@@ -213,6 +212,28 @@ public class Paths {
     cb.setOpId(opId, Config.getOpIdExpiration());
     
     return Response.ok(body)
+             .header("Server", "api.compose")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+  
+
+  @Path("/{soId}/streams/{streamId}/lastUpdate")
+  @GET
+  @Produces("application/json")
+  public Response getLastUpdate(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+    
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    Data data = cb.getData(user_id, soId, streamId);
+
+    if (data == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "No data in the stream of the Service Object.");
+    
+    return Response.ok(data.lastUpdate().toString())
              .header("Server", "api.compose")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
