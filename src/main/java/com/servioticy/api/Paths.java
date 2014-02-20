@@ -166,6 +166,25 @@ public class Paths {
 					   .header("Date", new Date(System.currentTimeMillis()))
 					   .build();
 	}
+	
+	@Path("/{soId}/streams")
+	@GET
+	@Produces("application/json")
+	public Response getStreams(@Context HttpHeaders hh, @PathParam("soId") String soId) {
+
+    String user_id = (String) this.servletRequest.getAttribute("user_id");
+		
+		// Get the Service Object
+		CouchBase cb = new CouchBase();
+		SO so = cb.getSO(user_id, soId);
+		if (so == null)
+			throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+		
+		return Response.ok(so.responseStreams())
+					   .header("Server", "api.compose")
+					   .header("Date", new Date(System.currentTimeMillis()))
+					   .build();
+	}
 
   @Path("/{soId}/streams/{streamId}")
   @PUT
