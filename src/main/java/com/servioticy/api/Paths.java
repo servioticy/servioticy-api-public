@@ -176,6 +176,9 @@ public class Paths {
   
     // Generate opId
     String opId = UUID.randomUUID().toString().replaceAll("-", "");
+    
+    // Create the response
+    String response = body;
   
     // Queueing
     QueueClient sqc;
@@ -185,7 +188,7 @@ public class Paths {
       boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId + 
           "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
       if (!res) {
-        // TODO -> what to do with res = false
+        response = "{ \"message\" : \"Stored but not queued\" }";
       }
       sqc.disconnect();
   
@@ -203,7 +206,9 @@ public class Paths {
     // Set the opId
     cb.setOpId(opId, Config.getOpIdExpiration());
     
-    return Response.ok(body)
+//    return Response.ok(body)
+    return Response.status(Response.Status.ACCEPTED)
+             .entity(response)
 					   .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
