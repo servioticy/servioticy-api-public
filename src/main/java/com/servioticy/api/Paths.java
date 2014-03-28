@@ -155,7 +155,7 @@ public class Paths {
   @Path("/{soId}/streams/{streamId}")
   @PUT
   @Produces("application/json")
-  public Response updateSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+  public Response putSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
                     @PathParam("streamId") String streamId, String body) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
@@ -233,8 +233,9 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so);
 
-    // Get the Service Object Data
-    Data data = cb.getData(so, streamId);
+//    // Get the Service Object Data
+//    Data data = cb.getData(so, streamId);
+    Data data = null; // TODO datamodel changed, to solve
 
     if (data == null)
       return Response.noContent()
@@ -275,7 +276,8 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Get the Service Object Data
-    Data data = cb.getData(so, streamId);
+//    Data data = cb.getData(so, streamId);
+    Data data = null; // TODO datamodel changed, to solve
 
     if (data == null)
       return Response.noContent()
