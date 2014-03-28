@@ -22,11 +22,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-    	<groupId>com.sun.jersey</groupId>
-    	<artifactId>jersey-server</artifactId>
-    	<version>1.18</version>
-    </dependency>
-    <dependency>
       <groupId>com.sun.jersey</groupId>
       <artifactId>jersey-servlet</artifactId>
       <version>1.18</version>
@@ -42,27 +37,20 @@
       <version>0.1</version>
     </dependency>
 <!--     <dependency>
-      <groupId>es.bsc.servioticy</groupId>
-      <artifactId>api-commons</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
-      <type>jar</type>
-      <classifier>sources</classifier>
-    </dependency> -->
-  	<dependency>
-  		<groupId>com.sun.jersey.jersey-test-framework</groupId>
-  		<artifactId>jersey-test-framework-external</artifactId>
-  		<version>1.17.1</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.mockito</groupId>
-  		<artifactId>mockito-core</artifactId>
-  		<version>1.9.5</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.eclipse.jetty</groupId>
-  		<artifactId>jetty-servlet</artifactId>
-  		<version>8.1.11.v20130520</version>
-  	</dependency>
+      <groupId>com.sun.jersey.jersey-test-framework</groupId>
+      <artifactId>jersey-test-framework-external</artifactId>
+      <version>1.17.1</version>
+    </dependency>
+ -->    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>1.9.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>8.1.11.v20130520</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -73,8 +61,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.3.2</version>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.7</source>
+          <target>1.7</target>
 <!--           <downloadSources>true</downloadSources>
           <downloadJavadocs>true</downloadJavadocs> -->
         </configuration>

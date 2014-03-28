@@ -19,6 +19,7 @@ import java.net.URI;
 import java.util.Date;
 import java.util.UUID;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -48,6 +49,7 @@ import com.servioticy.queueclient.QueueClientException;
 @Path("/")
 public class Paths {
   @Context UriInfo uriInfo;
+  @Context ServletContext servletContext;
   @Context
   private transient HttpServletRequest servletRequest;
 
@@ -183,7 +185,7 @@ public class Paths {
     // Queueing
     QueueClient sqc;
     try {
-      sqc = QueueClient.factory();
+      sqc = QueueClient.factory("default.xml");
       sqc.connect();
       boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
           "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
