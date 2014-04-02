@@ -16,7 +16,9 @@
 package com.servioticy.api;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import javax.servlet.ServletContext;
@@ -39,6 +41,7 @@ import com.servioticy.api.commons.data.CouchBase;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
 import com.servioticy.api.commons.datamodel.Data;
+import com.servioticy.api.commons.elasticsearch.SearchEngine;
 import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
 import com.servioticy.api.commons.utils.Authorization;
 import com.servioticy.api.commons.utils.Config;
@@ -234,17 +237,21 @@ public class Paths {
     aut.checkAuthorization(so);
 
 //    // Get the Service Object Data
-//    Data data = cb.getData(so, streamId);
-    Data data = null; // TODO datamodel changed, to solve
+    List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
+    List<Data> dataItems = new ArrayList<Data>();
+    
+    for(String id : IDs)
+    	dataItems.add(cb.getData(id));
 
-    if (data == null)
+
+    if (dataItems == null || dataItems.size() == 0)
       return Response.noContent()
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
 
     // Generate response
-    String response = data.responseAllData();
+    String response = Data.responseAllData(dataItems);
 
     if (response == null)
       return Response.noContent()
@@ -276,8 +283,9 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Get the Service Object Data
-//    Data data = cb.getData(so, streamId);
-    Data data = null; // TODO datamodel changed, to solve
+    long lastUpdate = SearchEngine.getLastUpdate(soId,streamId);    
+    Data data = cb.getData(soId,streamId,lastUpdate);
+    
 
     if (data == null)
       return Response.noContent()
