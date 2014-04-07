@@ -24,6 +24,7 @@ import java.util.UUID;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -125,6 +126,37 @@ public class Paths {
              .build();
   }
 
+  @Path("/{soId}")
+  @DELETE
+  @Produces("application/json")
+  public Response deleteSO(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+    for (String id : ids)
+    	cb.deleteData(id);
+    
+    cb.deleteSO(soId);
+    
+    return Response.noContent()
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+    
+  }
+  
+  
   @Path("/{soId}/streams")
   @GET
   @Produces("application/json")
@@ -156,6 +188,35 @@ public class Paths {
              .build();
   }
 
+  @Path("/{soId}/streams/{streamId}")
+  @DELETE
+  @Produces("application/json")
+  public Response deleteAllSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+    for (String id : ids)
+    	cb.deleteData(id);
+    
+    return Response.noContent()
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+    
+  }
+  
+  
   @Path("/{soId}/streams/{streamId}")
   @PUT
   @Produces("application/json")
@@ -284,7 +345,7 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Get the Service Object Data
-    long lastUpdate = SearchEngine.getLastUpdate(soId,streamId);    
+    long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);    
     Data data = cb.getData(soId,streamId,lastUpdate);
     
 
@@ -322,7 +383,7 @@ public class Paths {
     SearchCriteria filter = SearchCriteria.buildFromJson(body);
     
 //  // Get the Service Object Data
-    List<String> IDs = SearchEngine.searchUpdates(so.getId(), streamId, filter);
+    List<String> IDs = SearchEngine.searchUpdates(soId, streamId, filter);
     List<Data> dataItems = new ArrayList<Data>();
     
     for(String id : IDs)
