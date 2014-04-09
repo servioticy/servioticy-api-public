@@ -16,12 +16,15 @@
 package com.servioticy.api;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -39,6 +42,8 @@ import com.servioticy.api.commons.data.CouchBase;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
 import com.servioticy.api.commons.datamodel.Data;
+import com.servioticy.api.commons.elasticsearch.SearchCriteria;
+import com.servioticy.api.commons.elasticsearch.SearchEngine;
 import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
 import com.servioticy.api.commons.utils.Authorization;
 import com.servioticy.api.commons.utils.Config;
@@ -121,6 +126,37 @@ public class Paths {
              .build();
   }
 
+  @Path("/{soId}")
+  @DELETE
+  @Produces("application/json")
+  public Response deleteSO(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+    for (String id : ids)
+    	cb.deleteData(id);
+    
+    cb.deleteSO(soId);
+    
+    return Response.noContent()
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+    
+  }
+  
+  
   @Path("/{soId}/streams")
   @GET
   @Produces("application/json")
@@ -152,6 +188,35 @@ public class Paths {
              .build();
   }
 
+  @Path("/{soId}/streams/{streamId}")
+  @DELETE
+  @Produces("application/json")
+  public Response deleteAllSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+    for (String id : ids)
+    	cb.deleteData(id);
+    
+    return Response.noContent()
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+    
+  }
+  
+  
   @Path("/{soId}/streams/{streamId}")
   @PUT
   @Produces("application/json")
@@ -234,17 +299,21 @@ public class Paths {
     aut.checkAuthorization(so);
 
 //    // Get the Service Object Data
-//    Data data = cb.getData(so, streamId);
-    Data data = null; // TODO datamodel changed, to solve
+    List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
+    List<Data> dataItems = new ArrayList<Data>();
+    
+    for(String id : IDs)
+    	dataItems.add(cb.getData(id));
 
-    if (data == null)
+
+    if (dataItems == null || dataItems.size() == 0)
       return Response.noContent()
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
 
     // Generate response
-    String response = data.responseAllData();
+    String response = Data.responseAllData(dataItems);
 
     if (response == null)
       return Response.noContent()
@@ -276,8 +345,9 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Get the Service Object Data
-//    Data data = cb.getData(so, streamId);
-    Data data = null; // TODO datamodel changed, to solve
+    long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);    
+    Data data = cb.getData(soId,streamId,lastUpdate);
+    
 
     if (data == null)
       return Response.noContent()
@@ -291,6 +361,56 @@ public class Paths {
              .build();
   }
 
+  
+  @Path("/{soId}/streams/{streamId}/search")
+  @POST
+  @Produces("application/json")
+  public Response searchUpdates(@Context HttpHeaders hh, @PathParam("soId") String soId,
+                    @PathParam("streamId") String streamId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    
+    SearchCriteria filter = SearchCriteria.buildFromJson(body);
+    
+//  // Get the Service Object Data
+    List<String> IDs = SearchEngine.searchUpdates(soId, streamId, filter);
+    List<Data> dataItems = new ArrayList<Data>();
+    
+    for(String id : IDs)
+    	dataItems.add(cb.getData(id));
+
+    if (dataItems == null || dataItems.size() == 0)
+        return Response.noContent()
+               .header("Server", "api.servIoTicy")
+               .header("Date", new Date(System.currentTimeMillis()))
+               .build();
+
+      // Generate response
+      String response = Data.responseAllData(dataItems);
+
+
+    if (response == null)
+      return Response.noContent()
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+
+    return Response.ok(response)
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+  
   @Path("/{soId}/streams/{streamId}/subscriptions")
   @POST
   @Produces("application/json")
