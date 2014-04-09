@@ -133,7 +133,7 @@ public class Paths {
                     @PathParam("streamId") String streamId, String body) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-    
+
     // Get the Service Object
     CouchBase cb = new CouchBase();
     SO so = cb.getSO(soId);
@@ -145,18 +145,18 @@ public class Paths {
 
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     for (String id : ids)
-    	cb.deleteData(id);
-    
+        cb.deleteData(id);
+
     cb.deleteSO(soId);
-    
+
     return Response.noContent()
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
-    
+
   }
-  
-  
+
+
   @Path("/{soId}/streams")
   @GET
   @Produces("application/json")
@@ -195,7 +195,7 @@ public class Paths {
                     @PathParam("streamId") String streamId, String body) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-    
+
     // Get the Service Object
     CouchBase cb = new CouchBase();
     SO so = cb.getSO(soId);
@@ -207,16 +207,16 @@ public class Paths {
 
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     for (String id : ids)
-    	cb.deleteData(id);
-    
+        cb.deleteData(id);
+
     return Response.noContent()
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
-    
+
   }
-  
-  
+
+
   @Path("/{soId}/streams/{streamId}")
   @PUT
   @Produces("application/json")
@@ -301,9 +301,9 @@ public class Paths {
 //    // Get the Service Object Data
     List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
     List<Data> dataItems = new ArrayList<Data>();
-    
+
     for(String id : IDs)
-    	dataItems.add(cb.getData(id));
+        dataItems.add(cb.getData(id));
 
 
     if (dataItems == null || dataItems.size() == 0)
@@ -345,9 +345,9 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Get the Service Object Data
-    long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);    
+    long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
     Data data = cb.getData(soId,streamId,lastUpdate);
-    
+
 
     if (data == null)
       return Response.noContent()
@@ -361,7 +361,7 @@ public class Paths {
              .build();
   }
 
-  
+
   @Path("/{soId}/streams/{streamId}/search")
   @POST
   @Produces("application/json")
@@ -379,15 +379,15 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so);
 
-    
+
     SearchCriteria filter = SearchCriteria.buildFromJson(body);
-    
+
 //  // Get the Service Object Data
     List<String> IDs = SearchEngine.searchUpdates(soId, streamId, filter);
     List<Data> dataItems = new ArrayList<Data>();
-    
+
     for(String id : IDs)
-    	dataItems.add(cb.getData(id));
+        dataItems.add(cb.getData(id));
 
     if (dataItems == null || dataItems.size() == 0)
         return Response.noContent()
@@ -410,7 +410,7 @@ public class Paths {
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
   }
-  
+
   @Path("/{soId}/streams/{streamId}/subscriptions")
   @POST
   @Produces("application/json")
