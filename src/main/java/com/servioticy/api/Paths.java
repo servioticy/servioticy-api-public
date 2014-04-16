@@ -127,6 +127,39 @@ public class Paths {
   }
 
   @Path("/{soId}")
+  @PUT
+  @Produces("application/json")
+  public Response putSO(@Context HttpHeaders hh, @PathParam("soId") String soId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    // Update the Service Object
+    so.update(body);
+
+    // Store in Couchbase
+    cb.setSO(so);
+
+    // Construct the response uri
+    UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+    URI soUri = ub.path(so.getId()).build();
+
+    return Response.ok(soUri)
+             .entity(so.responseUpdateSO())
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+
+  @Path("/{soId}")
   @DELETE
   @Produces("application/json")
   public Response deleteSO(@Context HttpHeaders hh, @PathParam("soId") String soId,
@@ -143,7 +176,13 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so);
 
+    // Delete all soId's updates
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+    for (String id : ids)
+        cb.deleteData(id);
+
+    // Delete all the subscriptions that have soId as source or destination
+    ids = SearchEngine.getAllSubscriptionsBySrcAndDst(soId);
     for (String id : ids)
         cb.deleteData(id);
 
@@ -481,4 +520,31 @@ public class Paths {
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
   }
+
+  @Path("/subscriptions/{subsId}")
+  @DELETE
+  @Produces("application/json")
+  public Response deleteSubscription(@Context HttpHeaders hh,
+		  			@PathParam("subsId") String subsId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    Subscription subs = cb.getSubscription(subsId);
+    if (subs == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
+
+    cb.deleteSubscription(subs.getKey());
+
+    return Response.noContent()
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+
+  }
+
 }
