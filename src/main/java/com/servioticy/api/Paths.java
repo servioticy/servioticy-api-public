@@ -633,4 +633,47 @@ public class Paths {
 	  .build();
   }
 
+  @Path("/{soId}/actuations/{actuationId}")
+  @PUT
+  @Produces("application/json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response updateActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
+		  @PathParam("actuationId") String actuationId, String body) {
+
+	  Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+	  // Check if exists request data
+	  if (body.isEmpty())
+		  throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+
+	  // Get the Service Object
+	  CouchBase cb = new CouchBase();
+	  SO so = cb.getSO(soId);
+	  if (so == null)
+		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+	  // check authorization -> same user and not public
+	  aut.checkAuthorization(so);
+	  //TODO: check ownership?
+
+	  // Store again in Couchbase for status tracking
+	  Actuation act = cb.getActuation(actuationId);
+
+	  act.updateStatus(body);
+	  
+	  // Store again in Couchbase for status tracking
+	  cb.setActuation(act);
+
+	  // Construct the access subscription URI
+	  UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+	  URI actUri = ub.path(act.getId()).build();
+
+	  return Response.created(actUri)
+	  .entity(act.getStatus())
+	  .header("Server", "api.servIoTicy")
+	  .header("Date", new Date(System.currentTimeMillis()))
+	  .build();
+  }
+
+  
 }
