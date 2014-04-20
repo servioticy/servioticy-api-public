@@ -605,8 +605,13 @@ public class Paths {
 		  sqc = QueueClient.factory("default.xml");
 		  sqc.connect();
 		  boolean res = sqc.put("{\", \"soid\": \"" + soId +
-				  "\", \"action\": \"" + actuationName + "\", \"parameters\": " + act.getParameters() + "}");
-		  response = "{ \"message\" : \"Actuation submitted\"\n\"id\" : \""+act.getId()+"\"  }";
+				  "\", \"action\": \"" + actuationName + 
+				  "\", \"parameters\": \"" + act.getParameters()+ 
+				  "\", \"id\": " + act.getId() + "}");
+		  
+		  response = "{ \"message\" : \"Actuation submitted\", " +
+		  		        "\"id\" : \""+act.getId()+
+		  		     "\"  }";
 
 		  sqc.disconnect();
 
