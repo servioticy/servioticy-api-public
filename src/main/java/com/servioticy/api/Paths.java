@@ -37,7 +37,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.Response.Status;
 
+import com.servioticy.api.commons.data.Actuation;
 import com.servioticy.api.commons.data.CouchBase;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
@@ -52,7 +54,8 @@ import com.servioticy.queueclient.QueueClientException;
 
 
 @Path("/")
-public class Paths {
+public class Paths {	
+	
   @Context UriInfo uriInfo;
   @Context ServletContext servletContext;
   @Context
@@ -533,4 +536,180 @@ public class Paths {
 
   }
 
+  @Path("/{soId}/actuations")
+  @GET
+  @Produces("application/json")
+  public Response getActuations(@Context HttpHeaders hh, @PathParam("soId") String soId) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    
+    return Response.ok(so.getActuationsString())
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+  
+  @Path("/{soId}/actuations/{actionId}")
+  @GET
+  @Produces("application/json")
+  public Response getActuationStatus(@Context HttpHeaders hh, @PathParam("soId") String soId,
+		  						@PathParam("actionId") String actionId) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    CouchBase cb = new CouchBase();
+    SO so = cb.getSO(soId);
+    if (so == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(so);
+
+    Actuation act = cb.getActuation(actionId);
+    
+    return Response.ok(act.toString())
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
+  }
+  
+  
+  @Path("/{soId}/actuations/{actuationName}")
+  @POST
+  @Produces("application/json")
+  //@Consumes(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.TEXT_PLAIN)
+  public Response launchActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
+		  @PathParam("actuationName") String actuationName, String body) {
+
+	  Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+	  // Get the Service Object
+	  CouchBase cb = new CouchBase();
+	  SO so = cb.getSO(soId);
+	  if (so == null)
+		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+	  // check authorization -> same user and not public
+	  aut.checkAuthorization(so);
+	  //TODO: check ownership?
+
+	  Actuation act = new Actuation(so, actuationName, body);
+
+	  // Generate opId
+	  String opId = UUID.randomUUID().toString().replaceAll("-", "");
+
+	  String response;
+	  // Queueing
+	  QueueClient sqc; //soid, streamid, body
+	  try {
+		  sqc = QueueClient.factory("defaultActions.xml");
+		  sqc.connect();
+		  System.out.println("Sending to kestrel... : "+
+				  "{\"soid\": \"" + soId +
+				  "\", \"id\": \"" + act.getId() +
+				  "\", \"name\": \"" + actuationName + 
+				  "\", \"action\": " + act.toString()+ "}");
+		  
+		  boolean res = sqc.put(
+				  "{\"soid\": \"" + soId +
+				  "\", \"id\": \"" + act.getId() +
+				  "\", \"name\": \"" + actuationName + 
+				  "\", \"action\": " + act.toString() + "}");
+		  
+		  if (res) {
+			  response = "{ \"message\" : \"Actuation submitted\", " +
+			  "\"id\" : \""+act.getId()+
+			  "\"  }";
+		  } else {
+			  throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+					  "Undefined error in SQueueClient ");
+		  }
+		  
+		  sqc.disconnect();
+
+	  } catch (QueueClientException e) {
+		  System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
+		  throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+				  "SQueueClientException " + e.getMessage());
+	  } catch (Exception e) {
+		  throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+				  "Undefined error in SQueueClient");
+	  }
+
+
+	  // Store in Couchbase for status tracking
+	  cb.setActuation(act);
+	  
+	  // Set the opId
+	  cb.setOpId(opId, Config.getOpIdExpiration());
+
+
+	  // Construct the access subscription URI
+	  UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+	  URI actUri = ub.path("../"+act.getId()).build();
+
+	  return Response.created(actUri)
+	  .entity(response)
+	  .header("Server", "api.servIoTicy")
+	  .header("Date", new Date(System.currentTimeMillis()))
+	  .build();
+		  
+	  
+  }
+
+  @Path("/{soId}/actuations/{actuationId}")
+  @PUT
+  @Produces("application/json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response updateActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
+		  @PathParam("actuationId") String actuationId, String body) {
+
+	  Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+	  // Check if exists request data
+	  if (body.isEmpty())
+		  throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+
+	  // Get the Service Object
+	  CouchBase cb = new CouchBase();
+	  SO so = cb.getSO(soId);
+	  if (so == null)
+		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+	  // check authorization -> same user and not public
+	  aut.checkAuthorization(so);
+	  //TODO: check ownership?
+
+	  // Store again in Couchbase for status tracking
+	  Actuation act = cb.getActuation(actuationId);
+
+	  act.updateStatus(body);
+	  
+	  // Store again in Couchbase for status tracking
+	  cb.setActuation(act);
+
+	  // Construct the access subscription URI
+	  UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+	  URI actUri = ub.path(act.getId()).build();
+
+	  return Response.created(actUri)
+	  .entity(act.getStatus())
+	  .header("Server", "api.servIoTicy")
+	  .header("Date", new Date(System.currentTimeMillis()))
+	  .build();
+  }
+
+  
 }
