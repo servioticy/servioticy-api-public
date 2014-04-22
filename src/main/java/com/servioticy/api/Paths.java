@@ -544,8 +544,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -568,15 +567,14 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
     aut.checkAuthorization(so);
 
-    Actuation act = cb.getActuation(actionId);
+    Actuation act = CouchBase.getActuation(actionId);
     
     return Response.ok(act.toString())
              .header("Server", "api.servIoTicy")
@@ -596,8 +594,7 @@ public class Paths {
 	  Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
 	  // Get the Service Object
-	  CouchBase cb = new CouchBase();
-	  SO so = cb.getSO(soId);
+	  SO so = CouchBase.getSO(soId);
 	  if (so == null)
 		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -650,10 +647,10 @@ public class Paths {
 
 
 	  // Store in Couchbase for status tracking
-	  cb.setActuation(act);
+	  CouchBase.setActuation(act);
 	  
 	  // Set the opId
-	  cb.setOpId(opId, Config.getOpIdExpiration());
+	  CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 
 	  // Construct the access subscription URI
@@ -683,8 +680,8 @@ public class Paths {
 		  throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
 	  // Get the Service Object
-	  CouchBase cb = new CouchBase();
-	  SO so = cb.getSO(soId);
+	  
+	  SO so = CouchBase.getSO(soId);
 	  if (so == null)
 		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -693,12 +690,12 @@ public class Paths {
 	  //TODO: check ownership?
 
 	  // Store again in Couchbase for status tracking
-	  Actuation act = cb.getActuation(actuationId);
+	  Actuation act = CouchBase.getActuation(actuationId);
 
 	  act.updateStatus(body);
 	  
 	  // Store again in Couchbase for status tracking
-	  cb.setActuation(act);
+	  CouchBase.setActuation(act);
 
 	  // Construct the access subscription URI
 	  UriBuilder ub = uriInfo.getAbsolutePathBuilder();
