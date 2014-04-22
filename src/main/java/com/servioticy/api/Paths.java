@@ -74,8 +74,7 @@ public class Paths {
     SO so = new SO(userId, body);
 
     // Store in Couchbase
-    CouchBase cb = new CouchBase();
-    cb.setSO(so);
+    CouchBase.setSO(so);
 
     // Construct the response uri
     UriBuilder ub = uriInfo.getAbsolutePathBuilder();
@@ -95,8 +94,7 @@ public class Paths {
 
     String userId = (String) this.servletRequest.getAttribute("userId");
 
-    CouchBase cb = new CouchBase();
-    String sos = cb.getAllSOs(userId);
+    String sos = CouchBase.getAllSOs(userId);
 
     return Response.ok(sos)
              .header("Server", "api.servIoTicy")
@@ -112,8 +110,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -134,8 +131,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -146,7 +142,7 @@ public class Paths {
     so.update(body);
 
     // Store in Couchbase
-    cb.setSO(so);
+    CouchBase.setSO(so);
 
     // Construct the response uri
     UriBuilder ub = uriInfo.getAbsolutePathBuilder();
@@ -168,8 +164,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -179,14 +174,14 @@ public class Paths {
     // Delete all soId's updates
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     for (String id : ids)
-        cb.deleteData(id);
+        CouchBase.deleteData(id);
 
     // Delete all the subscriptions that have soId as source or destination
     ids = SearchEngine.getAllSubscriptionsBySrcAndDst(soId);
     for (String id : ids)
-        cb.deleteData(id);
+        CouchBase.deleteData(id);
 
-    cb.deleteSO(soId);
+    CouchBase.deleteSO(soId);
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
@@ -204,8 +199,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -236,8 +230,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -246,7 +239,7 @@ public class Paths {
 
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     for (String id : ids)
-        cb.deleteData(id);
+        CouchBase.deleteData(id);
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
@@ -269,8 +262,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -307,10 +299,10 @@ public class Paths {
     }
 
     // Store in Couchbase
-    cb.setData(data);
+    CouchBase.setData(data);
 
     // Set the opId
-    cb.setOpId(opId, Config.getOpIdExpiration());
+    CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 //    return Response.ok(body)
     return Response.status(Response.Status.ACCEPTED)
@@ -329,8 +321,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -342,7 +333,7 @@ public class Paths {
     List<Data> dataItems = new ArrayList<Data>();
 
     for(String id : IDs)
-        dataItems.add(cb.getData(id));
+        dataItems.add(CouchBase.getData(id));
 
 
     if (dataItems == null || dataItems.size() == 0)
@@ -375,8 +366,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -385,7 +375,7 @@ public class Paths {
 
     // Get the Service Object Data
     long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
-    Data data = cb.getData(soId,streamId,lastUpdate);
+    Data data = CouchBase.getData(soId,streamId,lastUpdate);
 
 
     if (data == null)
@@ -410,8 +400,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -426,7 +415,7 @@ public class Paths {
     List<Data> dataItems = new ArrayList<Data>();
 
     for(String id : IDs)
-        dataItems.add(cb.getData(id));
+        dataItems.add(CouchBase.getData(id));
 
     if (dataItems == null || dataItems.size() == 0)
         return Response.noContent()
@@ -464,8 +453,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -476,7 +464,7 @@ public class Paths {
     Subscription subs = new Subscription(so, streamId, body);
 
     // Store in Couchbase
-    cb.setSubscription(subs);
+    CouchBase.setSubscription(subs);
 
     // Construct the access subscription URI
     UriBuilder ub = uriInfo.getAbsolutePathBuilder();
@@ -498,8 +486,7 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    SO so = cb.getSO(soId);
+    SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
@@ -530,15 +517,14 @@ public class Paths {
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
     // Get the Service Object
-    CouchBase cb = new CouchBase();
-    Subscription subs = cb.getSubscription(subsId);
+    Subscription subs = CouchBase.getSubscription(subsId);
     if (subs == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
 
     // check authorization -> same user and not public
     aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
 
-    cb.deleteSubscription(subs.getKey());
+    CouchBase.deleteSubscription(subs.getKey());
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
