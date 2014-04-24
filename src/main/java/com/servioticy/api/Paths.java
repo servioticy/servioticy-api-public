@@ -37,8 +37,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.core.Response.Status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.servioticy.api.commons.data.Actuation;
 import com.servioticy.api.commons.data.CouchBase;
 import com.servioticy.api.commons.data.SO;
@@ -47,15 +47,15 @@ import com.servioticy.api.commons.datamodel.Data;
 import com.servioticy.api.commons.elasticsearch.SearchCriteria;
 import com.servioticy.api.commons.elasticsearch.SearchEngine;
 import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
+import com.servioticy.api.commons.security.IDM;
 import com.servioticy.api.commons.utils.Authorization;
 import com.servioticy.api.commons.utils.Config;
 import com.servioticy.queueclient.QueueClient;
 import com.servioticy.queueclient.QueueClientException;
 
-
 @Path("/")
-public class Paths {	
-	
+public class Paths {
+
   @Context UriInfo uriInfo;
   @Context ServletContext servletContext;
   @Context
@@ -67,14 +67,22 @@ public class Paths {
   @Consumes(MediaType.APPLICATION_JSON)
   public Response createSO(@Context HttpHeaders hh, String body) {
 
-    String userId = (String) this.servletRequest.getAttribute("userId");
+	String Acces_Token = hh.getRequestHeader(HttpHeaders.AUTHORIZATION).get(0);
 
     // Check if exists request data
     if (body.isEmpty())
       throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
     // Create the Service Object
-    SO so = new SO(userId, body);
+    SO so = new SO("", body); // TODO improve creation
+
+//    String userId = (String) this.servletRequest.getAttribute("userId");
+    // requires_token false if is compose ALERT is for stream
+    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host);
+    if (security == null)
+    	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
+
+    so.appendSecurity(security);
 
     // Store in Couchbase
     CouchBase.setSO(so);
@@ -551,13 +559,13 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so);
 
-    
+
     return Response.ok(so.getActuationsString())
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
   }
-  
+
   @Path("/{soId}/actuations/{actionId}")
   @GET
   @Produces("application/json")
@@ -575,14 +583,14 @@ public class Paths {
     aut.checkAuthorization(so);
 
     Actuation act = CouchBase.getActuation(actionId);
-    
+
     return Response.ok(act.toString())
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
   }
-  
-  
+
+
   @Path("/{soId}/actuations/{actuationName}")
   @POST
   @Produces("application/json")
@@ -616,15 +624,15 @@ public class Paths {
 		  System.out.println("Sending to kestrel... : "+
 				  "{\"soid\": \"" + soId +
 				  "\", \"id\": \"" + act.getId() +
-				  "\", \"name\": \"" + actuationName + 
+				  "\", \"name\": \"" + actuationName +
 				  "\", \"action\": " + act.toString()+ "}");
-		  
+
 		  boolean res = sqc.put(
 				  "{\"soid\": \"" + soId +
 				  "\", \"id\": \"" + act.getId() +
-				  "\", \"name\": \"" + actuationName + 
+				  "\", \"name\": \"" + actuationName +
 				  "\", \"action\": " + act.toString() + "}");
-		  
+
 		  if (res) {
 			  response = "{ \"message\" : \"Actuation submitted\", " +
 			  "\"id\" : \""+act.getId()+
@@ -633,7 +641,7 @@ public class Paths {
 			  throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
 					  "Undefined error in SQueueClient ");
 		  }
-		  
+
 		  sqc.disconnect();
 
 	  } catch (QueueClientException e) {
@@ -648,7 +656,7 @@ public class Paths {
 
 	  // Store in Couchbase for status tracking
 	  CouchBase.setActuation(act);
-	  
+
 	  // Set the opId
 	  CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
@@ -662,8 +670,8 @@ public class Paths {
 	  .header("Server", "api.servIoTicy")
 	  .header("Date", new Date(System.currentTimeMillis()))
 	  .build();
-		  
-	  
+
+
   }
 
   @Path("/{soId}/actuations/{actuationId}")
@@ -680,7 +688,7 @@ public class Paths {
 		  throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
 	  // Get the Service Object
-	  
+
 	  SO so = CouchBase.getSO(soId);
 	  if (so == null)
 		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
@@ -693,7 +701,7 @@ public class Paths {
 	  Actuation act = CouchBase.getActuation(actuationId);
 
 	  act.updateStatus(body);
-	  
+
 	  // Store again in Couchbase for status tracking
 	  CouchBase.setActuation(act);
 
@@ -708,5 +716,5 @@ public class Paths {
 	  .build();
   }
 
-  
+
 }
