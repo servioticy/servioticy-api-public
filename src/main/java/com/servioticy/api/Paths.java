@@ -497,7 +497,7 @@ public class Paths {
     aut.checkAuthorization(so);
 
     // Generate response
-    String response = so.responseSubscriptions(streamId);
+    String response = so.responseSubscriptions(streamId, true);
 
     if (response == null)
       return Response.noContent()
