@@ -2,7 +2,7 @@
 <QueueClientConf>
     <defaultQueue>
         <queueType>kestrel</queueType>
-        <baseAddress>127.0.0.1:22133</baseAddress>
+        <baseAddress>demo-compose-4:22133</baseAddress>
         <relativeAddress>actions</relativeAddress>
     </defaultQueue>
     <queue>
