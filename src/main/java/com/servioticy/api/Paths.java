@@ -535,6 +535,31 @@ public class Paths {
 
   }
 
+  @Path("/subscriptions/{subsId}")
+  @GET
+  @Produces("application/json")
+  public Response getSubscription(@Context HttpHeaders hh,
+		  			@PathParam("subsId") String subsId, String body) {
+
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // Get the Service Object
+    Subscription subs = CouchBase.getSubscription(subsId);
+    if (subs == null)
+      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
+
+    // check authorization -> same user and not public
+    aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
+
+    
+    return Response.ok(subs.getString())
+    .header("Server", "api.servIoTicy")
+    .header("Date", new Date(System.currentTimeMillis()))
+    .build();
+
+  }
+  
+  
   @Path("/{soId}/actuations")
   @GET
   @Produces("application/json")
