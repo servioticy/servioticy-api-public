@@ -78,7 +78,7 @@ public class Paths {
 
 //    String userId = (String) this.servletRequest.getAttribute("userId");
     // requires_token false if is compose ALERT is for stream
-    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host);
+    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
     if (security == null)
     	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
 
