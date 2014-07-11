@@ -3,7 +3,7 @@
     <defaultQueue>
         <queueType>kestrel</queueType>
         <baseAddress>127.0.0.1:22133</baseAddress>
-        <relativeAddress>services</relativeAddress>
+        <relativeAddress>actions</relativeAddress>
     </defaultQueue>
     <queue>
         <type>kestrel</type>
