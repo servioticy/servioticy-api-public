@@ -76,7 +76,6 @@ public class Paths {
     // Create the Service Object
     SO so = new SO("", body); // TODO improve creation
 
-//    String userId = (String) this.servletRequest.getAttribute("userId");
     // requires_token false if is compose ALERT is for stream
     JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
     if (security == null)
@@ -98,6 +97,7 @@ public class Paths {
              .build();
   }
 
+  // TODO to solve with security
   @GET
   @Produces("application/json")
   @Consumes(MediaType.APPLICATION_JSON)
