@@ -53,6 +53,8 @@ import com.servioticy.api.commons.utils.Config;
 import com.servioticy.queueclient.QueueClient;
 import com.servioticy.queueclient.QueueClientException;
 
+import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
+
 @Path("/")
 public class Paths {
 
@@ -310,6 +312,7 @@ public class Paths {
     }
 
     // Store in Couchbase
+    data.appendSecurity(null); // TODO to security metadata
     CouchBase.setData(data);
 
     // Set the opId
@@ -336,15 +339,20 @@ public class Paths {
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+//    // check authorization -> same user and not public
+//    aut.checkAuthorization(so);
 
 //    // Get the Service Object Data
     List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
     List<Data> dataItems = new ArrayList<Data>();
 
-    for(String id : IDs)
-        dataItems.add(CouchBase.getData(id));
+    PermissionCacheObject pco = new PermissionCacheObject();
+    Data su;
+    for(String id : IDs) {
+    	su = CouchBase.getData(id);
+    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
+        dataItems.add(su);
+    }
 
 
     if (dataItems == null || dataItems.size() == 0)
