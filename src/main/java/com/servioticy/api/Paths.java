@@ -280,7 +280,8 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+//    aut.checkAuthorization(so);
+    JsonNode security = aut.checkAuthorizationPutSU(so);
 
     // Create Data
     Data data = new Data(so, streamId, body);
@@ -312,7 +313,7 @@ public class Paths {
     }
 
     // Store in Couchbase
-    data.appendSecurity(null); // TODO to security metadata
+    data.appendSecurity(security); // TODO to security metadata
     CouchBase.setData(data);
 
     // Set the opId
@@ -351,7 +352,8 @@ public class Paths {
     for(String id : IDs) {
     	su = CouchBase.getData(id);
     	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
-        dataItems.add(su);
+    	if (pco.isPermission())
+    		dataItems.add(su);
     }
 
 
@@ -568,15 +570,15 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
 
-    
+
     return Response.ok(subs.getString())
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
 
   }
-  
-  
+
+
   @Path("/{soId}/actuations")
   @GET
   @Produces("application/json")
