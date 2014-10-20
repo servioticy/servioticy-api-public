@@ -53,7 +53,10 @@ import com.servioticy.api.commons.utils.Config;
 import com.servioticy.queueclient.QueueClient;
 import com.servioticy.queueclient.QueueClientException;
 
+import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
+
+import es.bsc.servioticy.api.util.Resources;
 
 @Path("/")
 public class Paths {
@@ -62,7 +65,6 @@ public class Paths {
   @Context ServletContext servletContext;
   @Context
   private transient HttpServletRequest servletRequest;
-
 
   @POST
   @Produces("application/json")
@@ -76,7 +78,8 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
     // Create the Service Object
-    SO so = new SO("", body); // TODO improve creation
+    // TODO improve creation (user_id="")
+    SO so = new SO("", body);
 
     // requires_token false if is compose ALERT is for stream
     JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
@@ -128,7 +131,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectDescription);
 
     return Response.ok(so.responseGetSO())
              .header("Server", "api.servIoTicy")
@@ -148,8 +151,8 @@ public class Paths {
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    // check authorization
+    aut.checkAuthorization(so, PDP.operationID.UpdateServiceObject);
 
     // Update the Service Object
     so.update(body);
@@ -182,7 +185,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.DeleteServiceObjectDescription);
 
     // Delete all soId's updates
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
@@ -217,7 +220,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.retrieveSOStreams);
 
     // Generate response
     String response = so.responseStreams();
@@ -248,7 +251,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.DeleteSensorUpdateData);
 
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     for (String id : ids)
@@ -392,7 +395,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectData);
 
     // Get the Service Object Data
     long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
@@ -426,7 +429,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.SearchUpdates);
 
 
     SearchCriteria filter = SearchCriteria.buildFromJson(body);
@@ -479,7 +482,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.CreateNewSubscription);
 
     // Create Subscription
     Subscription subs = new Subscription(so, streamId, body);
@@ -512,7 +515,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.GetSubscriptions);
 
     // Generate response
     String response = so.responseSubscriptions(streamId, true);
@@ -543,7 +546,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
+    aut.checkAuthorization(subs.getSO(), PDP.operationID.DeleteSpecificSubscription); // TODO check owner, only delete if is the owner
 
     CouchBase.deleteSubscription(subs.getKey());
 
@@ -568,7 +571,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
+    aut.checkAuthorization(subs.getSO(), PDP.operationID.GetSpecificSubscription); // TODO check owner, only delete if is the owner
 
 
     return Response.ok(subs.getString())
@@ -592,7 +595,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.GetActuations);
 
 
     return Response.ok(so.getActuationsString())
@@ -615,7 +618,7 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so);
+    aut.checkAuthorization(so, PDP.operationID.GetActuationStatus);
 
     Actuation act = CouchBase.getActuation(actionId);
 
@@ -642,7 +645,7 @@ public class Paths {
 		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
 	  // check authorization -> same user and not public
-	  aut.checkAuthorization(so);
+	  aut.checkAuthorization(so, PDP.operationID.LaunchActuation);
 	  //TODO: check ownership?
 
 	  Actuation act = new Actuation(so, actuationName, body);
@@ -729,7 +732,7 @@ public class Paths {
 		  throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
 	  // check authorization -> same user and not public
-	  aut.checkAuthorization(so);
+	  aut.checkAuthorization(so, PDP.operationID.UpdateActuation);
 	  //TODO: check ownership?
 
 	  // Store again in Couchbase for status tracking
