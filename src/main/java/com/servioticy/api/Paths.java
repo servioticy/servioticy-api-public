@@ -66,37 +66,6 @@ public class Paths {
   @Context
   private transient HttpServletRequest servletRequest;
 
-  @GET
-  @Path("/hola")
-//  @Produces("application/json")
-  public Response getHello(@Context HttpHeaders hh) {
-
-	  return Response.ok("Hellooo")
-			  .header("Server", "api.servIoTicy")
-              .header("Date", new Date(System.currentTimeMillis()))
-              .build();
-  }
-  
-  public JsonNode test() {
-	  JsonNode security = IDM.PostSO("token", "soId", true, false, false, "host", 1234);
-	  
-	  return security;
-  }
-
-  public JsonNode testTwo() {
-      String body = Resources.jsonRead("correct.json").toString();
-
-      SO so = new SO("", body);
-      String soId = so.getId();
-      
-      JsonNode security = IDM.PostSO("token", soId, true, false, false, "host", 1234);
-      if (security == null)
-          throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
-      
-      return security;
-  }
-
-
   @POST
   @Produces("application/json")
   @Consumes(MediaType.APPLICATION_JSON)
