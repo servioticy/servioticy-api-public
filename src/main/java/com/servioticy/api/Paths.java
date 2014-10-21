@@ -56,7 +56,6 @@ import com.servioticy.queueclient.QueueClientException;
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
 
-import es.bsc.servioticy.api.util.Resources;
 
 @Path("/")
 public class Paths {
