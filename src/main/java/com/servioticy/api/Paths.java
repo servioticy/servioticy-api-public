@@ -252,9 +252,15 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so, PDP.operationID.DeleteSensorUpdateData);
 
+    PermissionCacheObject pco = new PermissionCacheObject();
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
-    for (String id : ids)
-        CouchBase.deleteData(id);
+    Data su;
+    for (String id : ids) {
+    	su = CouchBase.getData(id);
+    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
+    	if (pco.isPermission())
+    	    CouchBase.deleteData(id);
+    }
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
@@ -394,11 +400,16 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectData);
+//    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectData);
 
     // Get the Service Object Data
     long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
-    Data data = CouchBase.getData(soId,streamId,lastUpdate);
+    Data data = CouchBase.getData(soId, streamId, lastUpdate);
+
+    PermissionCacheObject pco = new PermissionCacheObject();
+    pco = aut.checkAuthorizationGetData(so, data.getSecurity(), pco);
+    if (!pco.isPermission())
+        data = null;
 
 
     if (data == null)
