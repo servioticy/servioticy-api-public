@@ -55,6 +55,8 @@ import com.servioticy.queueclient.QueueClientException;
 
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
+import de.passau.uni.sec.compose.pdp.servioticy.exception.PDPServioticyException;
+import de.passau.uni.sec.compose.pdp.servioticy.provenance.ServioticyProvenance;
 
 
 @Path("/")
@@ -244,23 +246,37 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
+    // check if user exists
+    if (aut.getUserId() == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
+
     // Get the Service Object
     SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.DeleteSensorUpdateData);
 
     PermissionCacheObject pco = new PermissionCacheObject();
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
     Data su;
     for (String id : ids) {
     	su = CouchBase.getData(id);
-    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
+    	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.DeleteSensorUpdateData);
     	if (pco.isPermission())
     	    CouchBase.deleteData(id);
     }
+
+//    for(String id : IDs) {
+//    	su = CouchBase.getData(id);
+//    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
+//    	if (pco.isPermission()) {
+//    	    // Reputacion code TODO
+//    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
+//    	    // Now send root to Dispatcher TODO
+//    		dataItems.add(su);
+//    	}
+//    }
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
@@ -289,7 +305,7 @@ public class Paths {
 
     // check authorization -> same user and not public
 //    aut.checkAuthorization(so);
-    JsonNode security = aut.checkAuthorizationPutSU(so);
+    JsonNode security = aut.checkAuthorizationPutSU(so, streamId);
 
     // Create Data
     Data data = new Data(so, streamId, body);
@@ -343,13 +359,17 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
+    // check if user exists
+    if (aut.getUserId() == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
+
     // Get the Service Object
     SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-//    // check authorization -> same user and not public
-//    aut.checkAuthorization(so);
 
 //    // Get the Service Object Data
     List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
@@ -357,11 +377,17 @@ public class Paths {
 
     PermissionCacheObject pco = new PermissionCacheObject();
     Data su;
+    JsonNode root;
+    ServioticyProvenance sp = new ServioticyProvenance();
     for(String id : IDs) {
     	su = CouchBase.getData(id);
-    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
-    	if (pco.isPermission())
+    	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
+    	if (pco.isPermission()) {
+    	    // Reputacion code TODO
+    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
+    	    // Now send root to Dispatcher TODO
     		dataItems.add(su);
+    	}
     }
 
 
@@ -407,7 +433,7 @@ public class Paths {
     Data data = CouchBase.getData(soId, streamId, lastUpdate);
 
     PermissionCacheObject pco = new PermissionCacheObject();
-    pco = aut.checkAuthorizationGetData(so, data.getSecurity(), pco);
+    pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
     if (!pco.isPermission())
         data = null;
 
