@@ -307,8 +307,9 @@ public class Paths {
 //    aut.checkAuthorization(so);
     JsonNode security = aut.checkAuthorizationPutSU(so, streamId);
 
-    // Create Data
+    // Create Data and append security
     Data data = new Data(so, streamId, body);
+    data.appendSecurity(security); // TODO to security metadata
 
     // Generate opId
     String opId = UUID.randomUUID().toString().replaceAll("-", "");
@@ -337,7 +338,6 @@ public class Paths {
     }
 
     // Store in Couchbase
-    data.appendSecurity(security); // TODO to security metadata
     CouchBase.setData(data);
 
     // Set the opId
