@@ -323,7 +323,7 @@ public class Paths {
       sqc = QueueClient.factory("default.xml");
       sqc.connect();
       boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
-          "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
+          "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
       if (!res) {
         response = "{ \"message\" : \"Stored but not queued\" }";
       }
