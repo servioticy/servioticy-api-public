@@ -379,6 +379,8 @@ public class Paths {
     Data su;
     JsonNode root;
     ServioticyProvenance sp = new ServioticyProvenance();
+
+    // TODO Shouldn't this also be in getLastUpdate?
     for(String id : IDs) {
     	su = CouchBase.getData(id);
     	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
@@ -392,7 +394,7 @@ public class Paths {
                         "\"dest\": {" +
                             "\"user_id\": "+ aut.getUserId() +
                         "},"+
-                        "\"su\": " + su.getString() +
+                        "\"su\": " + su.getString() + // TODO Only lastUpdate is needed, not sure how to do it.
                     "}";
     	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
     	    // Now send root to Dispatcher
