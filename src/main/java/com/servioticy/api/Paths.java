@@ -387,12 +387,12 @@ public class Paths {
     	if (pco.isPermission()) {
             String reputationDoc =
                     "{" +
-                        "\"src\": \" {" +
-                            "\"soid\": "+ soId +
-                            "\", \"streamid\": \"" + streamId +
+                        "\"src\": {" +
+                            "\"soid\": \""+ soId + "\"," +
+                            "\"streamid\": \"" + streamId + "\"" +
                         "}," +
                         "\"dest\": {" +
-                            "\"user_id\": "+ aut.getUserId() +
+                            "\"user_id\": \""+ aut.getUserId() + "\"" +
                         "},"+
                         "\"su\": " + su.getString() + // TODO Only lastUpdate is needed, not sure how to do it.
                     "}";
