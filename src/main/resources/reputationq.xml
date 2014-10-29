@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QueueClientConf>
+    <defaultQueue>
+        <queueType>kestrel</queueType>
+        <baseAddress>127.0.0.1:22133</baseAddress>
+        <relativeAddress>reputation</relativeAddress>
+    </defaultQueue>
+    <queue>
+        <type>kestrel</type>
+        <className>com.servioticy.queueclient.KestrelMemcachedClient</className>
+        <concreteConf>
+            <expire>0</expire>
+        </concreteConf>
+    </queue>
+</QueueClientConf>

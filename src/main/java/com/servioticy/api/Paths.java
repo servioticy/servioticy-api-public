@@ -383,9 +383,44 @@ public class Paths {
     	su = CouchBase.getData(id);
     	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
     	if (pco.isPermission()) {
-    	    // Reputacion code TODO
+            String reputationDoc =
+                    "{" +
+                        "\"src\": \" {" +
+                            "\"soid\": "+ soId +
+                            "\", \"streamid\": \"" + streamId +
+                        "}," +
+                        "\"dest\": {" +
+                            "\"user_id\": "+ aut.getUserId() +
+                        "},"+
+                        "\"su\": " + su.getString() +
+                    "}";
     	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
-    	    // Now send root to Dispatcher TODO
+    	    // Now send root to Dispatcher
+            QueueClient sqc; //soid, streamid, body
+            try {
+                sqc = QueueClient.factory("reputationq.xml");
+                sqc.connect();
+
+                boolean res = sqc.put(reputationDoc);
+
+                if(!res){
+                    // TODO
+//                    throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                            "Undefined error in SQueueClient ");
+                }
+
+                sqc.disconnect();
+
+            } catch (QueueClientException e) {
+                // TODO
+//                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
+//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                        "SQueueClientException " + e.getMessage());
+            } catch (Exception e) {
+                // TODO
+//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                        "Undefined error in SQueueClient");
+            }
     		dataItems.add(su);
     	}
     }
