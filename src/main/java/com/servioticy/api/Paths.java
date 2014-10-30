@@ -394,7 +394,7 @@ public class Paths {
                         "\"dest\": {" +
                             "\"user_id\": \""+ aut.getUserId() + "\"" +
                         "},"+
-                        "\"su\": " + su.getString() + // TODO Only lastUpdate is needed, not sure how to do it.
+                        "\"su\": " + su.getLastUpdate() +
                     "}";
     	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
     	    // Now send root to Dispatcher
@@ -414,14 +414,12 @@ public class Paths {
                 sqc.disconnect();
 
             } catch (QueueClientException e) {
-                // TODO
-//                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                        "SQueueClientException " + e.getMessage());
+                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
+                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                        "SQueueClientException " + e.getMessage());
             } catch (Exception e) {
-                // TODO
-//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                        "Undefined error in SQueueClient");
+                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                        "Undefined error in SQueueClient");
             }
     		dataItems.add(su);
     	}
