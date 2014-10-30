@@ -396,7 +396,7 @@ public class Paths {
                         "},"+
                         "\"su\": " + su.getLastUpdate() +
                     "}";
-    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
+    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity()); //TODO why we need root???
     	    // Now send root to Dispatcher
             QueueClient sqc; //soid, streamid, body
             try {
