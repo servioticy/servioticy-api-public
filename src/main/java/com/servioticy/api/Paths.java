@@ -55,8 +55,6 @@ import com.servioticy.queueclient.QueueClientException;
 
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
-import de.passau.uni.sec.compose.pdp.servioticy.exception.PDPServioticyException;
-import de.passau.uni.sec.compose.pdp.servioticy.provenance.ServioticyProvenance;
 
 
 @Path("/")
@@ -259,10 +257,10 @@ public class Paths {
 
     PermissionCacheObject pco = new PermissionCacheObject();
     List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
-    Data su;
+    Data data;
     for (String id : ids) {
-    	su = CouchBase.getData(id);
-    	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.DeleteSensorUpdateData);
+    	data = CouchBase.getData(id);
+    	pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.DeleteSensorUpdateData);
     	if (pco.isPermission())
     	    CouchBase.deleteData(id);
     }
@@ -376,14 +374,12 @@ public class Paths {
     List<Data> dataItems = new ArrayList<Data>();
 
     PermissionCacheObject pco = new PermissionCacheObject();
-    Data su;
-    JsonNode root;
-    ServioticyProvenance sp = new ServioticyProvenance();
+    Data data;
 
     // TODO Shouldn't this also be in getLastUpdate?
     for(String id : IDs) {
-    	su = CouchBase.getData(id);
-    	pco = aut.checkAuthorizationData(so, su.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
+    	data = CouchBase.getData(id);
+    	pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
     	if (pco.isPermission()) {
             String reputationDoc =
                     "{" +
@@ -394,9 +390,8 @@ public class Paths {
                         "\"dest\": {" +
                             "\"user_id\": \""+ aut.getUserId() + "\"" +
                         "},"+
-                        "\"su\": " + su.getLastUpdate() +
+                        "\"su\": " + data.getLastUpdate() +
                     "}";
-    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity()); //TODO why we need root???
     	    // Now send root to Dispatcher
             QueueClient sqc; //soid, streamid, body
             try {
@@ -421,7 +416,7 @@ public class Paths {
                 throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
                         "Undefined error in SQueueClient");
             }
-    		dataItems.add(su);
+    		dataItems.add(data);
     	}
     }
 
@@ -455,13 +450,16 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
+    // check if user exists
+    if (aut.getUserId() == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
+
     // Get the Service Object
     SO so = CouchBase.getSO(soId);
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-//    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectData);
 
     // Get the Service Object Data
     long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
@@ -470,14 +468,46 @@ public class Paths {
     PermissionCacheObject pco = new PermissionCacheObject();
     pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
     if (!pco.isPermission())
-        data = null;
-
-
-    if (data == null)
       return Response.noContent()
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
+    
+    String reputationDoc =
+            "{" +
+                "\"src\": {" +
+                    "\"soid\": \""+ soId + "\"," +
+                    "\"streamid\": \"" + streamId + "\"" +
+                "}," +
+                "\"dest\": {" +
+                    "\"user_id\": \""+ aut.getUserId() + "\"" +
+                "},"+
+                "\"su\": " + data.getLastUpdate() +
+            "}";
+    // Now send root to Dispatcher
+    QueueClient sqc; //soid, streamid, body
+    try {
+        sqc = QueueClient.factory("reputationq.xml");
+        sqc.connect();
+        
+        boolean res = sqc.put(reputationDoc);
+
+        if(!res){
+            // TODO
+//            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                    "Undefined error in SQueueClient ");
+        }
+
+        sqc.disconnect();
+
+        } catch (QueueClientException e) {
+            System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "SQueueClientException " + e.getMessage());
+        } catch (Exception e) {
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "Undefined error in SQueueClient");
+        }
 
     return Response.ok(data.responseLastUpdate())
              .header("Server", "api.servIoTicy")
