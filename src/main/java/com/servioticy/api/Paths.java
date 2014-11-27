@@ -280,25 +280,25 @@ public class Paths {
     // Create the response
     String response = body;
 
-//    // Queueing
-//    QueueClient sqc;
-//    try {
-//      sqc = QueueClient.factory("default.xml");
-//      sqc.connect();
-//      boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
-//          "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
-//      if (!res) {
-//        response = "{ \"message\" : \"Stored but not queued\" }";
-//      }
-//      sqc.disconnect();
-//
-//    } catch (QueueClientException e) {
-//      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//          "SQueueClientException " + e.getMessage());
-//    } catch (Exception e) {
-//      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//          "Undefined error in SQueueClient");
-//    }
+    // Queueing
+    QueueClient sqc;
+    try {
+      sqc = QueueClient.factory("default.xml");
+      sqc.connect();
+      boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
+          "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
+      if (!res) {
+        response = "{ \"message\" : \"Stored but not queued\" }";
+      }
+      sqc.disconnect();
+
+    } catch (QueueClientException e) {
+      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+          "SQueueClientException " + e.getMessage());
+    } catch (Exception e) {
+      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+          "Undefined error in SQueueClient");
+    }
 
     // Store in Couchbase
     CouchBase.setData(data);
