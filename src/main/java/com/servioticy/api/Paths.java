@@ -388,7 +388,7 @@ public class Paths {
                             "\"streamid\": \"" + streamId + "\"" +
                         "}," +
                         "\"dest\": {" +
-                            "\"user_id\": \""+ aut.getUserId() + "\"" +
+                            "\"user_id\": \""+ pco.getUserId() + "\"" +
                         "},"+
                         "\"su\": " + data.getLastUpdate() +
                     "}";
@@ -480,7 +480,7 @@ public class Paths {
                     "\"streamid\": \"" + streamId + "\"" +
                 "}," +
                 "\"dest\": {" +
-                    "\"user_id\": \""+ aut.getUserId() + "\"" +
+                    "\"user_id\": \""+ pco.getUserId() + "\"" +
                 "},"+
                 "\"su\": " + data.getLastUpdate() +
             "}";
