@@ -107,7 +107,18 @@ public class Paths {
   @Consumes(MediaType.APPLICATION_JSON)
   public Response getAllSOs(@Context HttpHeaders hh) {
 
-    String userId = (String) this.servletRequest.getAttribute("userId");
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+    // check if user exists
+    String userId = aut.getUserId();
+    if (userId == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
+
+//    List<String> ids = SearchEngine.getAllSOS(userId);
+//    for (String id : ids)
+//        System.out.println(id);
 
     String sos = CouchBase.getAllSOs(userId);
 
