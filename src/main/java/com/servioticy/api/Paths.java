@@ -70,7 +70,14 @@ public class Paths {
   @Consumes(MediaType.APPLICATION_JSON)
   public Response createSO(@Context HttpHeaders hh, String body) {
 
-	String Acces_Token = hh.getRequestHeader(HttpHeaders.AUTHORIZATION).get(0);
+//	String Acces_Token = hh.getRequestHeader(HttpHeaders.AUTHORIZATION).get(0);
+    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    // check if user exists
+    String userId = aut.getUserId();
+    if (userId == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
 
     // Check if exists request data
     if (body.isEmpty())
@@ -78,10 +85,11 @@ public class Paths {
 
     // Create the Service Object
     // TODO improve creation (user_id="")
-    SO so = new SO("", body);
+    SO so = new SO(userId, body);
 
     // requires_token false if is compose ALERT is for stream
-    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
+//    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
+    JsonNode security = IDM.PostSO(aut.getAcces_Token(), so.getId(), true, false, false, Config.idm_host, Config.idm_port);
     if (security == null)
     	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
 
