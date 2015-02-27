@@ -592,6 +592,13 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
+    // check if user exists
+    String userId = aut.getUserId();
+    if (userId == null) {
+        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
+                "Authentication failed, wrong credentials");
+    }
+
     // Check if exists request data
     if (body.isEmpty())
       throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
@@ -605,7 +612,7 @@ public class Paths {
     aut.checkAuthorization(so, PDP.operationID.CreateNewSubscription);
 
     // Create Subscription
-    Subscription subs = new Subscription(so, streamId, body);
+    Subscription subs = new Subscription(so, streamId, body, userId);
 
     // Store in Couchbase
     CouchBase.setSubscription(subs);
@@ -698,9 +705,7 @@ public class Paths {
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
-
   }
-
 
   @Path("/{soId}/actuations")
   @GET
