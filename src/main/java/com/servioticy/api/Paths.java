@@ -449,6 +449,7 @@ public class Paths {
                     @PathParam("streamId") String streamId, String body) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+    String userId = (String) this.servletRequest.getAttribute("userId");
 
     // Check if exists request data
     if (body.isEmpty())
@@ -459,11 +460,11 @@ public class Paths {
     if (so == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    // check authorization -> same user and not public
+    // check authorization -> same user and public
     aut.checkAuthorization(so);
 
     // Create Subscription
-    Subscription subs = new Subscription(so, streamId, body);
+    Subscription subs = new Subscription(so, userId, streamId, body);
 
     // Store in Couchbase
     CouchBase.setSubscription(subs);
@@ -518,13 +519,16 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
-    // Get the Service Object
-    Subscription subs = CouchBase.getSubscription(subsId);
-    if (subs == null)
+    // Get the Subscription Key
+    String subsKey = SearchEngine.getSubscriptionDocId(subsId);
+    if (subsKey == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
+    // Get the Subscription
+    Subscription subs = CouchBase.getSubscription(subsKey);
+
+    // check owner. Only the owner of the Subscription can delete it
+    aut.checkOwner(subs);
 
     CouchBase.deleteSubscription(subs.getKey());
 
@@ -543,16 +547,19 @@ public class Paths {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
-    // Get the Service Object
-    Subscription subs = CouchBase.getSubscription(subsId);
-    if (subs == null)
+    // Get the Subscription Key
+    String subsKey = SearchEngine.getSubscriptionDocId(subsId);
+    if (subsKey == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
+
+    // Get the Subscription
+    Subscription subs = CouchBase.getSubscription(subsKey);
 
     // check authorization -> same user and not public
     aut.checkAuthorization(subs.getSO()); // TODO check owner, only delete if is the owner
 
 
-    return Response.ok(subs.getString())
+    return Response.ok(subs.responseGetSO())
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
