@@ -47,7 +47,6 @@ import com.servioticy.api.commons.datamodel.Data;
 import com.servioticy.api.commons.elasticsearch.SearchCriteria;
 import com.servioticy.api.commons.elasticsearch.SearchEngine;
 import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
-import com.servioticy.api.commons.security.IDM;
 import com.servioticy.api.commons.utils.Authorization;
 import com.servioticy.api.commons.utils.Config;
 import com.servioticy.queueclient.QueueClient;
@@ -85,15 +84,14 @@ public class Paths {
 
     // Create the Service Object
     // TODO improve creation (user_id="")
-    SO so = new SO(userId, body);
+    SO so = new SO(aut.getAcces_Token(), userId, body);
 
+    // MOVED INSIDE new SO
     // requires_token false if is compose ALERT is for stream
-//    JsonNode security = IDM.PostSO(Acces_Token, so.getId(), true, false, false, Config.idm_host, Config.idm_port);
-    JsonNode security = IDM.PostSO(aut.getAcces_Token(), so.getId(), true, false, false, Config.idm_host, Config.idm_port);
-    if (security == null)
-    	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
-
-    so.appendSecurity(security);
+//    JsonNode security = IDM.PostSO(aut.getAcces_Token(), so.getId(), true, false, false, Config.idm_host, Config.idm_port);
+//    if (security == null)
+//    	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
+//    so.appendSecurity(security);
 
     // Store in Couchbase
     CouchBase.setSO(so);
@@ -611,8 +609,11 @@ public class Paths {
     // check authorization -> same user and not public
     aut.checkAuthorization(so, PDP.operationID.CreateNewSubscription);
 
+//    String test = IDM.getInformationForUser(aut.getAcces_Token());
+//    System.out.printf(test);
+
     // Create Subscription
-    Subscription subs = new Subscription(so, streamId, body, userId);
+    Subscription subs = new Subscription(aut.getAcces_Token(), so, streamId, body, userId);
 
     // Store in Couchbase
     CouchBase.setSubscription(subs);
