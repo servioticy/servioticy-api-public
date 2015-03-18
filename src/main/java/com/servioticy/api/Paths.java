@@ -613,7 +613,7 @@ public class Paths {
 //    System.out.printf(test);
 
     // Create Subscription
-    Subscription subs = new Subscription(aut.getAcces_Token(), so, streamId, body, userId);
+    Subscription subs = new Subscription(aut.getAcces_Token(), userId, so, streamId, body);
 
     // Store in Couchbase
     CouchBase.setSubscription(subs);
@@ -667,14 +667,13 @@ public class Paths {
 		  			@PathParam("subsId") String subsId, String body) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
+    
+    // Get the Service Object associated with the Subscription
     Subscription subs = CouchBase.getSubscription(subsId);
     if (subs == null)
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(subs.getSO(), PDP.operationID.DeleteSpecificSubscription); // TODO check owner, only delete if is the owner
+    aut.checkAuthorization(subs.getSO(), PDP.operationID.DeleteSpecificSubscription);
 
     CouchBase.deleteSubscription(subs.getKey());
 
