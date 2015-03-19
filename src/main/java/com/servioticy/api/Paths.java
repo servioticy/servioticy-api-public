@@ -701,7 +701,7 @@ public class Paths {
     aut.checkAuthorization(subs.getSO(), PDP.operationID.GetSpecificSubscription); // TODO check owner, only delete if is the owner
 
 
-    return Response.ok(subs.getString())
+    return Response.ok(subs.responseGetSubs())
     .header("Server", "api.servIoTicy")
     .header("Date", new Date(System.currentTimeMillis()))
     .build();
