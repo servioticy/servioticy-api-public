@@ -484,7 +484,7 @@ public class Paths {
 
     PermissionCacheObject pco = new PermissionCacheObject();
     pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
-    if (!pco.isPermission())
+    if (data.getSecurity() == null || !pco.isPermission())
       return Response.noContent()
              .header("Server", "api.servIoTicy")
              .header("Date", new Date(System.currentTimeMillis()))
