@@ -216,7 +216,8 @@ public class Paths {
 
     CouchBase.deleteSO(soId);
 
-    IDM.DeleteSO(aut.getAcces_Token(), soId, true, false, false, Config.idm_host, Config.idm_port);
+    // Delete from IDM
+    IDM.DeleteSO(aut.getAcces_Token(), soId, Config.idm_host, Config.idm_port);
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
