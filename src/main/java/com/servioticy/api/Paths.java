@@ -47,6 +47,7 @@ import com.servioticy.api.commons.datamodel.Data;
 import com.servioticy.api.commons.elasticsearch.SearchCriteria;
 import com.servioticy.api.commons.elasticsearch.SearchEngine;
 import com.servioticy.api.commons.exceptions.ServIoTWebApplicationException;
+import com.servioticy.api.commons.security.IDM;
 import com.servioticy.api.commons.utils.Authorization;
 import com.servioticy.api.commons.utils.Config;
 import com.servioticy.queueclient.QueueClient;
@@ -214,6 +215,8 @@ public class Paths {
         CouchBase.deleteData(id);
 
     CouchBase.deleteSO(soId);
+
+    IDM.DeleteSO(aut.getAcces_Token(), soId, true, false, false, Config.idm_host, Config.idm_port);
 
     return Response.noContent()
     .header("Server", "api.servIoTicy")
