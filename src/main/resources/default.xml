@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <QueueClientConf>
-    <defaultQueue>
-        <queueType>kestrel</queueType>
-        <baseAddress>127.0.0.1:22133</baseAddress>
-        <relativeAddress>services</relativeAddress>
-    </defaultQueue>
-    <queue>
-        <type>kestrel</type>
-        <className>com.servioticy.queueclient.KestrelMemcachedClient</className>
-        <concreteConf>
-            <expire>0</expire>
-        </concreteConf>
-    </queue>
+  <className>com.servioticy.queueclient.KafkaClient</className>
+  <address>localhost:2181</address>
+  <queueName>updates</queueName>
+  <classConf>
+  </classConf>
 </QueueClientConf>
