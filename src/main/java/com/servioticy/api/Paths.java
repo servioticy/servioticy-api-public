@@ -62,18 +62,8 @@ public class Paths {
 
   @Context UriInfo uriInfo;
   @Context ServletContext servletContext;
-  @Context QueueClient sqc;
   @Context
   private transient HttpServletRequest servletRequest;
-
-  public Paths(){
-      try {
-          this.sqc = QueueClient.factory("default.xml");
-          sqc.connect();
-      } catch (QueueClientException e) {
-          e.printStackTrace();
-      }
-  }
 
   @POST
   @Produces("application/json")
@@ -349,6 +339,8 @@ public class Paths {
     // Queueing
     QueueClient sqc;
     try {
+      sqc = QueueClient.factory("default.xml");
+      sqc.connect();
       boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
           "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
       if (!res) {
