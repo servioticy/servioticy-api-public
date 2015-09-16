@@ -348,6 +348,7 @@ public class Paths {
     String response = body;
 
     // Queueing
+    QueueClient sqc;
     try {
       boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
           "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
