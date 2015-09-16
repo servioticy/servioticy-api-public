@@ -67,6 +67,7 @@ public class Paths {
   private transient HttpServletRequest servletRequest;
 
   public Paths(){
+      this.sqc = null;
       try {
           this.sqc = QueueClient.factory("default.xml");
           sqc.connect();
