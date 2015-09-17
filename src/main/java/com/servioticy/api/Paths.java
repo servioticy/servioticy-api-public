@@ -773,8 +773,6 @@ public class Paths {
 
 	  Actuation act = new Actuation(so, actuationName, body);
 
-	  // Generate opId
-	  String opId = UUID.randomUUID().toString().replaceAll("-", "");
 
 	  String response;
 	  // Queueing
@@ -817,9 +815,6 @@ public class Paths {
 
 	  // Store in Couchbase for status tracking
 	  CouchBase.setActuation(act);
-
-	  // Set the opId
-	  CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 
 	  // Construct the access subscription URI
