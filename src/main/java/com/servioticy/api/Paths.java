@@ -274,8 +274,8 @@ public class Paths {
     // Create Data
     Data data = new Data(so, streamId, body);
 
-    // Generate opId
-    String opId = UUID.randomUUID().toString().replaceAll("-", "");
+    // Store in Couchbase
+    CouchBase.setData(data);
 
     // Create the response
     String response = body;
@@ -285,7 +285,7 @@ public class Paths {
     try {
       sqc = QueueClient.factory("default.xml");
       sqc.connect();
-      boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
+      boolean res = sqc.put("{\"soid\": \"" + soId +
           "\", \"streamid\": \"" + streamId + "\", \"su\": " + body + "}");
       if (!res) {
         response = "{ \"message\" : \"Stored but not queued\" }";
@@ -299,12 +299,6 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
           "Undefined error in SQueueClient");
     }
-
-    // Store in Couchbase
-    CouchBase.setData(data);
-
-    // Set the opId
-    CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 //    return Response.ok(body)
     return Response.status(Response.Status.ACCEPTED)
@@ -635,9 +629,6 @@ public class Paths {
 
 	  Actuation act = new Actuation(so, actuationName, body);
 
-	  // Generate opId
-	  String opId = UUID.randomUUID().toString().replaceAll("-", "");
-
 	  String response;
 	  // Queueing
 	  QueueClient sqc; //soid, streamid, body
@@ -679,10 +670,6 @@ public class Paths {
 
 	  // Store in Couchbase for status tracking
 	  CouchBase.setActuation(act);
-
-	  // Set the opId
-	  CouchBase.setOpId(opId, Config.getOpIdExpiration());
-
 
 	  // Construct the access subscription URI
 	  UriBuilder ub = uriInfo.getAbsolutePathBuilder();
