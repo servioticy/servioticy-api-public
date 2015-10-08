@@ -323,12 +323,10 @@ public class Paths {
       throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
     // check authorization -> same user and not public
-//    aut.checkAuthorization(so);
-    JsonNode security = aut.checkAuthorizationPutSU(so, streamId);
+    JsonNode update = aut.checkAuthorizationPutSU(so, streamId, body);
 
     // Create Data and append security
-    Data data = new Data(so, streamId, body);
-    data.appendSecurity(security); // TODO to security metadata
+    Data data = new Data(so, streamId, update.toString());
 
     // Generate opId
     String opId = UUID.randomUUID().toString().replaceAll("-", "");
@@ -692,7 +690,7 @@ public class Paths {
   @GET
   @Produces("application/json")
   public Response getSubscription(@Context HttpHeaders hh,
-		  			@PathParam("subsId") String subsId, String body) {
+		  			@PathParam("subsId") String subsId) {
 
     Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
