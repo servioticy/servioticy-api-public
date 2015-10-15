@@ -396,41 +396,41 @@ public class Paths {
     	data = CouchBase.getData(id);
     	pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
     	if (pco.isPermission()) {
-            String reputationDoc =
-                    "{" +
-                        "\"src\": {" +
-                            "\"soid\": \""+ soId + "\"," +
-                            "\"streamid\": \"" + streamId + "\"" +
-                        "}," +
-                        "\"dest\": {" +
-                            "\"user_id\": \""+ pco.getUserId() + "\"" +
-                        "},"+
-                        "\"su\": " + data.getLastUpdate() +
-                    "}";
-    	    // Now send root to Dispatcher
-            QueueClient sqc; //soid, streamid, body
-            try {
-                sqc = QueueClient.factory("reputationq.xml");
-                sqc.connect();
-
-                boolean res = sqc.put(reputationDoc);
-
-                if(!res){
-                    // TODO
-//                    throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                            "Undefined error in SQueueClient ");
-                }
-
-                sqc.disconnect();
-
-            } catch (QueueClientException e) {
-                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                        "SQueueClientException " + e.getMessage());
-            } catch (Exception e) {
-                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                        "Undefined error in SQueueClient");
-            }
+//            String reputationDoc =
+//                    "{" +
+//                        "\"src\": {" +
+//                            "\"soid\": \""+ soId + "\"," +
+//                            "\"streamid\": \"" + streamId + "\"" +
+//                        "}," +
+//                        "\"dest\": {" +
+//                            "\"user_id\": \""+ pco.getUserId() + "\"" +
+//                        "},"+
+//                        "\"su\": " + data.getLastUpdate() +
+//                    "}";
+//    	    // Now send root to Dispatcher
+//            QueueClient sqc; //soid, streamid, body
+//            try {
+//                sqc = QueueClient.factory("reputationq.xml");
+//                sqc.connect();
+//
+//                boolean res = sqc.put(reputationDoc);
+//
+//                if(!res){
+//                    // TODO
+////                    throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+////                            "Undefined error in SQueueClient ");
+//                }
+//
+//                sqc.disconnect();
+//
+//            } catch (QueueClientException e) {
+//                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
+//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                        "SQueueClientException " + e.getMessage());
+//            } catch (Exception e) {
+//                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                        "Undefined error in SQueueClient");
+//            }
     		dataItems.add(data);
     	}
     }
@@ -488,41 +488,41 @@ public class Paths {
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
     
-    String reputationDoc =
-            "{" +
-                "\"src\": {" +
-                    "\"soid\": \""+ soId + "\"," +
-                    "\"streamid\": \"" + streamId + "\"" +
-                "}," +
-                "\"dest\": {" +
-                    "\"user_id\": \""+ pco.getUserId() + "\"" +
-                "},"+
-                "\"su\": " + data.getLastUpdate() +
-            "}";
-    // Now send root to Dispatcher
-    QueueClient sqc; //soid, streamid, body
-    try {
-        sqc = QueueClient.factory("reputationq.xml");
-        sqc.connect();
-        
-        boolean res = sqc.put(reputationDoc);
-
-        if(!res){
-            // TODO
+//    String reputationDoc =
+//            "{" +
+//                "\"src\": {" +
+//                    "\"soid\": \""+ soId + "\"," +
+//                    "\"streamid\": \"" + streamId + "\"" +
+//                "}," +
+//                "\"dest\": {" +
+//                    "\"user_id\": \""+ pco.getUserId() + "\"" +
+//                "},"+
+//                "\"su\": " + data.getLastUpdate() +
+//            "}";
+//    // Now send root to Dispatcher
+//    QueueClient sqc; //soid, streamid, body
+//    try {
+//        sqc = QueueClient.factory("reputationq.xml");
+//        sqc.connect();
+//
+//        boolean res = sqc.put(reputationDoc);
+//
+//        if(!res){
+//            // TODO
+////            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+////                    "Undefined error in SQueueClient ");
+//        }
+//
+//        sqc.disconnect();
+//
+//        } catch (QueueClientException e) {
+//            System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
 //            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                    "Undefined error in SQueueClient ");
-        }
-
-        sqc.disconnect();
-
-        } catch (QueueClientException e) {
-            System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                    "SQueueClientException " + e.getMessage());
-        } catch (Exception e) {
-            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                    "Undefined error in SQueueClient");
-        }
+//                    "SQueueClientException " + e.getMessage());
+//        } catch (Exception e) {
+//            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+//                    "Undefined error in SQueueClient");
+//        }
 
     return Response.ok(data.responseLastUpdate())
              .header("Server", "api.servIoTicy")
