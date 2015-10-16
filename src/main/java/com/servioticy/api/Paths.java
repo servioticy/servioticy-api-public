@@ -328,37 +328,31 @@ public class Paths {
     // Create Data and append security
     Data data = new Data(so, streamId, update.toString());
 
-    // Generate opId
-    String opId = UUID.randomUUID().toString().replaceAll("-", "");
-
     // Create the response
     String response = body;
+
+    // Store in Couchbase
+    CouchBase.setData(data);
 
     // Queueing
     QueueClient sqc;
     try {
       sqc = QueueClient.factory("default.xml");
       sqc.connect();
-      boolean res = sqc.put("{\"opid\": \"" + opId + "\", \"soid\": \"" + soId +
-          "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
+      boolean res = sqc.put("{\"soid\": \"" + soId +
+              "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
       if (!res) {
-        response = "{ \"message\" : \"Stored but not queued\" }";
+          response = "{ \"message\" : \"Stored but not queued\" }";
       }
       sqc.disconnect();
 
     } catch (QueueClientException e) {
       throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-          "SQueueClientException " + e.getMessage());
+              "SQueueClientException " + e.getMessage());
     } catch (Exception e) {
       throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-          "Undefined error in SQueueClient");
+              "Undefined error in SQueueClient");
     }
-
-    // Store in Couchbase
-    CouchBase.setData(data);
-
-    // Set the opId
-    CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 //    return Response.ok(body)
     return Response.status(Response.Status.ACCEPTED)
@@ -777,8 +771,6 @@ public class Paths {
 
 	  Actuation act = new Actuation(so, actuationName, body);
 
-	  // Generate opId
-	  String opId = UUID.randomUUID().toString().replaceAll("-", "");
 
 	  String response;
 	  // Queueing
@@ -821,9 +813,6 @@ public class Paths {
 
 	  // Store in Couchbase for status tracking
 	  CouchBase.setActuation(act);
-
-	  // Set the opId
-	  CouchBase.setOpId(opId, Config.getOpIdExpiration());
 
 
 	  // Construct the access subscription URI
