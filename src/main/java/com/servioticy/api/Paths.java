@@ -477,6 +477,12 @@ public class Paths {
     // Get the Service Object Data
     long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
     Data data = CouchBase.getData(soId, streamId, lastUpdate);
+    
+    if (data == null)
+      return Response.noContent()
+             .header("Server", "api.servIoTicy")
+             .header("Date", new Date(System.currentTimeMillis()))
+             .build();
 
     PermissionCacheObject pco = new PermissionCacheObject();
     pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
