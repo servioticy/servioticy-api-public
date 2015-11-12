@@ -122,7 +122,13 @@ public class Paths {
         List<String> soIds = new ArrayList<String>();
         for (Map.Entry<String, Object> dyngroupMap : dyngroupsMap.entrySet()) {
           HttpPut httpPut = new HttpPut(
-                  "http://api.servioticy.com:9090/private/" + so.getId() + "/dynGroups/" + dyngroupMap.getKey() + "/" + userId + "/" + aut.getAcces_Token()
+                  "http://"+servletRequest.getServerName() +":"+servletRequest.getServerPort() +
+                          "/private/" +
+                          so.getId() +
+                          "/dynGroups/" +
+                          dyngroupMap.getKey() +
+                          "/" + userId +
+                          "/" + aut.getAcces_Token()
           );
           StringEntity input = new StringEntity("");
           input.setContentType("application/json");
