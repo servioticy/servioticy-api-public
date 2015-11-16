@@ -92,7 +92,8 @@ public class Paths {
 
     // Create the Service Object
     // TODO improve creation (user_id="")
-    SO so = new SO(aut.getAcces_Token(), userId, body);
+    String accessToken = aut.getAcces_Token();
+    SO so = new SO(accessToken, userId, body);
 
     // MOVED INSIDE new SO
     // requires_token false if is compose ALERT is for stream
@@ -111,7 +112,7 @@ public class Paths {
     //Dynamic groups
     try{
       ObjectMapper mapper = new ObjectMapper();
-      Map<String, Object> soMap = mapper.readValue(so.getString(), new TypeReference<Map<String, JsonNode>>() {});
+      Map<String, Object> soMap = mapper.readValue(so.getString(), new TypeReference<Map<String, Object>>() {});
 
       if (soMap.containsKey("dyngroups")) {
         Map<String, Object> dyngroupsMap = (Map<String, Object>) soMap.get("dyngroups");
@@ -125,10 +126,9 @@ public class Paths {
                   "http://"+servletRequest.getServerName() +":"+servletRequest.getServerPort() +
                           "/private/" +
                           so.getId() +
-                          "/dynGroups/" +
+                          "/dyngroups/" +
                           dyngroupMap.getKey() +
-                          "/" + userId +
-                          "/" + aut.getAcces_Token()
+                          "/" + accessToken
           );
           StringEntity input = new StringEntity("");
           input.setContentType("application/json");
