@@ -16,10 +16,8 @@
 package com.servioticy.api;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.Future;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -38,7 +36,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.servioticy.api.commons.data.Actuation;
 import com.servioticy.api.commons.data.CouchBase;
 import com.servioticy.api.commons.data.SO;
@@ -55,6 +55,13 @@ import com.servioticy.queueclient.QueueClientException;
 
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
 
 
 @Path("/")
@@ -85,7 +92,8 @@ public class Paths {
 
     // Create the Service Object
     // TODO improve creation (user_id="")
-    SO so = new SO(aut.getAcces_Token(), userId, body);
+    String accessToken = aut.getAcces_Token();
+    SO so = new SO(accessToken, userId, body);
 
     // MOVED INSIDE new SO
     // requires_token false if is compose ALERT is for stream
@@ -100,6 +108,37 @@ public class Paths {
     // Construct the response uri
     UriBuilder ub = uriInfo.getAbsolutePathBuilder();
     URI soUri = ub.path(so.getId()).build();
+
+    //Dynamic groups
+    try{
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, Object> soMap = mapper.readValue(so.getString(), new TypeReference<Map<String, Object>>() {});
+
+      if (soMap.containsKey("dyngroups")) {
+        Map<String, Object> dyngroupsMap = (Map<String, Object>) soMap.get("dyngroups");
+
+        CloseableHttpAsyncClient httpClient = HttpAsyncClients.createDefault();
+        httpClient.start();
+        List<Future<HttpResponse>> responses = new ArrayList<Future<HttpResponse>>();
+        List<String> soIds = new ArrayList<String>();
+        for (Map.Entry<String, Object> dyngroupMap : dyngroupsMap.entrySet()) {
+          HttpPut httpPut = new HttpPut(
+                  "http://"+servletRequest.getServerName() +":"+servletRequest.getServerPort() +
+                          "/private/" +
+                          so.getId() +
+                          "/dyngroups/" +
+                          dyngroupMap.getKey() +
+                          "/" + accessToken
+          );
+          StringEntity input = new StringEntity("");
+          input.setContentType("application/json");
+          httpPut.setEntity(input);
+          httpClient.execute(httpPut, null).get();
+        }
+      }
+    }catch(Exception e){
+      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
 
     return Response.created(soUri)
              .entity(so.responseCreateSO())
