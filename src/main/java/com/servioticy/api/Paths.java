@@ -16,11 +16,11 @@
 package com.servioticy.api;
 
 import java.net.URI;
-import java.util.*;
-import java.util.concurrent.Future;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -39,11 +39,18 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.servioticy.api.commons.data.Actuation;
 import com.servioticy.api.commons.data.CouchBase;
+import com.servioticy.api.commons.data.Reputation;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
 import com.servioticy.api.commons.datamodel.Data;
@@ -58,13 +65,6 @@ import com.servioticy.queueclient.QueueClientException;
 
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
 
 
 @Path("/")
@@ -436,42 +436,9 @@ public class Paths {
         data = CouchBase.getData(id);
         pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
         if (pco.isPermission()) {
-            String reputationDoc =
-                    "{" +
-                        "\"src\": {" +
-                            "\"soid\": \""+ soId + "\"," +
-                            "\"streamid\": \"" + streamId + "\"" +
-                        "}," +
-                        "\"dest\": {" +
-                            "\"user_id\": \""+ pco.getUserId() + "\"" +
-                        "},"+
-                        "\"su\": " + data.getLastUpdate() +
-                    "}";
-            // Now send root to Dispatcher
-            QueueClient sqc; //soid, streamid, body
-            try {
-                sqc = QueueClient.factory("reputationq.xml");
-                sqc.connect();
+        	Reputation.setReputation(soId, streamId, pco.getUserId(), data.getLastUpdate());
 
-                boolean res = sqc.put(reputationDoc);
-
-                if(!res){
-                    // TODO
-//                    throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                            "Undefined error in SQueueClient ");
-                }
-
-                sqc.disconnect();
-
-            } catch (QueueClientException e) {
-                System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                        "SQueueClientException " + e.getMessage());
-            } catch (Exception e) {
-                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                        "Undefined error in SQueueClient");
-            }
-            dataItems.add(data);
+        	dataItems.add(data);
         }
     }
 
@@ -534,41 +501,7 @@ public class Paths {
              .header("Date", new Date(System.currentTimeMillis()))
              .build();
     
-    String reputationDoc =
-            "{" +
-                "\"src\": {" +
-                    "\"soid\": \""+ soId + "\"," +
-                    "\"streamid\": \"" + streamId + "\"" +
-                "}," +
-                "\"dest\": {" +
-                    "\"user_id\": \""+ pco.getUserId() + "\"" +
-                "},"+
-                "\"su\": " + data.getLastUpdate() +
-            "}";
-    // Now send root to Dispatcher
-    QueueClient sqc; //soid, streamid, body
-    try {
-        sqc = QueueClient.factory("reputationq.xml");
-        sqc.connect();
-        
-        boolean res = sqc.put(reputationDoc);
-
-        if(!res){
-            // TODO
-//            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-//                    "Undefined error in SQueueClient ");
-        }
-
-        sqc.disconnect();
-
-        } catch (QueueClientException e) {
-            System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                    "SQueueClientException " + e.getMessage());
-        } catch (Exception e) {
-            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                    "Undefined error in SQueueClient");
-        }
+    Reputation.setReputation(soId, streamId, pco.getUserId(), data.getLastUpdate());
 
     return Response.ok(data.responseLastUpdate())
              .header("Server", "api.servIoTicy")
