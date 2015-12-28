@@ -50,6 +50,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.servioticy.api.commons.data.Actuation;
 import com.servioticy.api.commons.data.CouchBase;
+import com.servioticy.api.commons.data.Provenance;
 import com.servioticy.api.commons.data.Reputation;
 import com.servioticy.api.commons.data.SO;
 import com.servioticy.api.commons.data.Subscription;
@@ -66,790 +67,683 @@ import com.servioticy.queueclient.QueueClientException;
 import de.passau.uni.sec.compose.pdp.servioticy.PDP;
 import de.passau.uni.sec.compose.pdp.servioticy.PermissionCacheObject;
 
-
 @Path("/")
 public class Paths {
 
-  @Context UriInfo uriInfo;
-  @Context ServletContext servletContext;
-  @Context
-  private transient HttpServletRequest servletRequest;
+    @Context
+    UriInfo uriInfo;
+    @Context
+    ServletContext servletContext;
+    @Context
+    private transient HttpServletRequest servletRequest;
 
-  @POST
-  @Produces("application/json")
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response createSO(@Context HttpHeaders hh, String body) {
+    @Produces("application/json")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createSO(@Context HttpHeaders hh, String body) {
 
-//	String Acces_Token = hh.getRequestHeader(HttpHeaders.AUTHORIZATION).get(0);
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-    // check if user exists
-    String userId = aut.getUserId();
-    if (userId == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Check if exists request data
+        if (body.isEmpty())
+            throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+
+        // Create the Service Object
+        String userId = auth.getUserId();
+        String authToken = auth.getAcces_Token();
+        SO so = new SO(authToken, userId, body);
+
+        // Store in Couchbase
+        CouchBase.setSO(so);
+
+        // Construct the response uri
+        UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+        URI soUri = ub.path(so.getId()).build();
+
+        // Dynamic groups
+//        try {
+//            ObjectMapper mapper = new ObjectMapper();
+//            Map<String, Object> soMap = mapper.readValue(so.getString(), new TypeReference<Map<String, Object>>() {
+//            });
+//
+//            if (soMap.containsKey("dyngroups")) {
+//                Map<String, Object> dyngroupsMap = (Map<String, Object>) soMap.get("dyngroups");
+//
+//                CloseableHttpAsyncClient httpClient = HttpAsyncClients.createDefault();
+//                httpClient.start();
+//                List<Future<HttpResponse>> responses = new ArrayList<Future<HttpResponse>>();
+//                List<String> soIds = new ArrayList<String>();
+//                for (Map.Entry<String, Object> dyngroupMap : dyngroupsMap.entrySet()) {
+//                    HttpPut httpPut = new HttpPut("http://" + servletRequest.getServerName() + ":"
+//                            + servletRequest.getServerPort() + "/private/" + so.getId() + "/dyngroups/"
+//                            + dyngroupMap.getKey() + "/" + accessToken);
+//                    StringEntity input = new StringEntity("");
+//                    input.setContentType("application/json");
+//                    httpPut.setEntity(input);
+//                    httpClient.execute(httpPut, null).get();
+//                }
+//            }
+//        } catch (Exception e) {
+//            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+//        }
+
+        return Response.created(soUri)
+                       .entity(so.responseCreateSO())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
-    // Check if exists request data
-    if (body.isEmpty())
-      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+    // TODO to solve with security
+    @GET
+    @Produces("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response getAllSOs(@Context HttpHeaders hh) {
 
-    // Create the Service Object
-    // TODO improve creation (user_id="")
-    String accessToken = aut.getAcces_Token();
-    SO so = new SO(accessToken, userId, body);
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    // MOVED INSIDE new SO
-    // requires_token false if is compose ALERT is for stream
-//    JsonNode security = IDM.PostSO(aut.getAcces_Token(), so.getId(), true, false, false, Config.idm_host, Config.idm_port);
-//    if (security == null)
-//    	throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, "");
-//    so.appendSecurity(security);
+        // List<String> ids = SearchEngine.getAllSOS(userId);
+        // for (String id : ids)
+        // System.out.println(id);
 
-    // Store in Couchbase
-    CouchBase.setSO(so);
+        String userId = auth.getUserId();
+        String sos = CouchBase.getAllSOs(userId);
 
-    // Construct the response uri
-    UriBuilder ub = uriInfo.getAbsolutePathBuilder();
-    URI soUri = ub.path(so.getId()).build();
-
-    //Dynamic groups
-    try{
-      ObjectMapper mapper = new ObjectMapper();
-      Map<String, Object> soMap = mapper.readValue(so.getString(), new TypeReference<Map<String, Object>>() {});
-
-      if (soMap.containsKey("dyngroups")) {
-        Map<String, Object> dyngroupsMap = (Map<String, Object>) soMap.get("dyngroups");
-
-        CloseableHttpAsyncClient httpClient = HttpAsyncClients.createDefault();
-        httpClient.start();
-        List<Future<HttpResponse>> responses = new ArrayList<Future<HttpResponse>>();
-        List<String> soIds = new ArrayList<String>();
-        for (Map.Entry<String, Object> dyngroupMap : dyngroupsMap.entrySet()) {
-          HttpPut httpPut = new HttpPut(
-                  "http://"+servletRequest.getServerName() +":"+servletRequest.getServerPort() +
-                          "/private/" +
-                          so.getId() +
-                          "/dyngroups/" +
-                          dyngroupMap.getKey() +
-                          "/" + accessToken
-          );
-          StringEntity input = new StringEntity("");
-          input.setContentType("application/json");
-          httpPut.setEntity(input);
-          httpClient.execute(httpPut, null).get();
-        }
-      }
-    }catch(Exception e){
-      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage());
+        return Response.ok(sos)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
-    return Response.created(soUri)
-             .entity(so.responseCreateSO())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
+    @Path("/{soId}")
+    @GET
+    @Produces("application/json")
+    public Response getSO(@Context HttpHeaders hh, @PathParam("soId") String soId) {
 
-  // TODO to solve with security
-  @GET
-  @Produces("application/json")
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response getAllSOs(@Context HttpHeaders hh) {
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    // check if user exists
-    String userId = aut.getUserId();
-    if (userId == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
+        // check authorization -> same user and not public
+        auth.checkAuthorization(so);
+
+        return Response.ok(so.responseGetSO())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
-//    List<String> ids = SearchEngine.getAllSOS(userId);
-//    for (String id : ids)
-//        System.out.println(id);
+    @Path("/{soId}")
+    @PUT
+    @Produces("application/json")
+    public Response putSO(@Context HttpHeaders hh, @PathParam("soId") String soId, String body) {
 
-    String sos = CouchBase.getAllSOs(userId);
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    return Response.ok(sos)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-  @Path("/{soId}")
-  @GET
-  @Produces("application/json")
-  public Response getSO(@Context HttpHeaders hh, @PathParam("soId") String soId) {
+        // check authorization
+        auth.checkAuthorization(so);
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+        // Update the Service Object
+        so.update(body);
 
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+        // Store in Couchbase
+        CouchBase.setSO(so);
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.RetrieveServiceObjectDescription);
+        // Construct the response uri
+        UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+        URI soUri = ub.path(so.getId()).build();
 
-    return Response.ok(so.responseGetSO())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}")
-  @PUT
-  @Produces("application/json")
-  public Response putSO(@Context HttpHeaders hh, @PathParam("soId") String soId, String body) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization
-    aut.checkAuthorization(so, PDP.operationID.UpdateServiceObject);
-
-    // Update the Service Object
-    so.update(body);
-
-    // Store in Couchbase
-    CouchBase.setSO(so);
-
-    // Construct the response uri
-    UriBuilder ub = uriInfo.getAbsolutePathBuilder();
-    URI soUri = ub.path(so.getId()).build();
-
-    return Response.ok(soUri)
-             .entity(so.responseUpdateSO())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}")
-  @DELETE
-  @Produces("application/json")
-  public Response deleteSO(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId, String body) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.DeleteServiceObjectDescription);
-
-    // Delete all soId's updates
-    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
-    for (String id : ids)
-        CouchBase.deleteData(id);
-
-    // Delete all the subscriptions that have soId as source or destination
-    ids = SearchEngine.getAllSubscriptionsBySrcAndDst(soId);
-    for (String id : ids)
-        CouchBase.deleteData(id);
-
-    CouchBase.deleteSO(soId);
-
-    // Delete from IDM
-    IDM.DeleteSO(aut.getAcces_Token(), soId, Config.idm_host, Config.idm_port);
-
-    return Response.noContent()
-    .header("Server", "api.servIoTicy")
-    .header("Date", new Date(System.currentTimeMillis()))
-    .build();
-
-  }
-
-
-  @Path("/{soId}/streams")
-  @GET
-  @Produces("application/json")
-  public Response getStreams(@Context HttpHeaders hh, @PathParam("soId") String soId) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.retrieveSOStreams);
-
-    // Generate response
-    String response = so.responseStreams();
-
-    if (response == null)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-
-    return Response.ok(response)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}/streams/{streamId}")
-  @DELETE
-  @Produces("application/json")
-  public Response deleteAllSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId, String body) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // check if user exists
-    if (aut.getUserId() == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
+        return Response.ok(soUri)
+                       .entity(so.responseUpdateSO())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+    @Path("/{soId}")
+    @DELETE
+    @Produces("application/json")
+    public Response deleteSO(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId, String body) {
 
-    PermissionCacheObject pco = new PermissionCacheObject();
-    List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
-    Data data;
-    for (String id : ids) {
-        data = CouchBase.getData(id);
-        pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.DeleteSensorUpdateData);
-        if (pco.isPermission())
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> same user and not public
+        auth.checkAuthorization(so);
+
+        // Delete all soId's updates
+        List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+        for (String id : ids)
             CouchBase.deleteData(id);
+
+        // Delete all the subscriptions that have soId as source or destination
+        ids = SearchEngine.getAllSubscriptionsBySrcAndDst(soId);
+        for (String id : ids)
+            CouchBase.deleteData(id);
+
+        CouchBase.deleteSO(soId);
+
+        // Delete from provenance
+        Provenance.DeleteSO(auth.getAcces_Token(), soId);
+
+        return Response.noContent().header("Server", "api.servIoTicy")
+                .header("Date", new Date(System.currentTimeMillis())).build();
+
     }
 
-//    for(String id : IDs) {
-//    	su = CouchBase.getData(id);
-//    	pco = aut.checkAuthorizationGetData(so, su.getSecurity(), pco);
-//    	if (pco.isPermission()) {
-//    	    // Reputacion code TODO
-//    	    root = sp.getSourceFromSecurityMetaDataJsonNode(su.getSecurity());
-//    	    // Now send root to Dispatcher TODO
-//    		dataItems.add(su);
-//    	}
-//    }
+    @Path("/{soId}/streams")
+    @GET
+    @Produces("application/json")
+    public Response getStreams(@Context HttpHeaders hh, @PathParam("soId") String soId) {
 
-    return Response.noContent()
-    .header("Server", "api.servIoTicy")
-    .header("Date", new Date(System.currentTimeMillis()))
-    .build();
+        Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
-  }
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
+        // check authorization -> same user and not public
+        aut.checkAuthorization(so);
 
-  @Path("/{soId}/streams/{streamId}")
-  @PUT
-  @Produces("application/json")
-  public Response putSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId, String body) {
+        // Generate response
+        String response = so.responseStreams();
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+        if (response == null)
+            return Response.noContent().header("Server", "api.servIoTicy")
+                    .header("Date", new Date(System.currentTimeMillis())).build();
 
-    // Check if exists request data
-    if (body.isEmpty())
-      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    JsonNode update = aut.checkAuthorizationPutSU(so, streamId, body);
-
-    // Create Data and append security
-    Data data = new Data(so, streamId, update.toString());
-
-    // Create the response
-    String response = body;
-
-    // Store in Couchbase
-    CouchBase.setData(data);
-
-    // Queueing
-    QueueClient sqc;
-    try {
-      sqc = QueueClient.factory("default.xml");
-      sqc.connect();
-      boolean res = sqc.put("{\"soid\": \"" + soId +
-              "\", \"streamid\": \"" + streamId + "\", \"su\": " + data.getString() + "}");
-      if (!res) {
-          response = "{ \"message\" : \"Stored but not queued\" }";
-      }
-      sqc.disconnect();
-
-    } catch (QueueClientException e) {
-      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-              "SQueueClientException " + e.getMessage());
-    } catch (Exception e) {
-      throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-              "Undefined error in SQueueClient");
+        return Response.ok(response).header("Server", "api.servIoTicy")
+                .header("Date", new Date(System.currentTimeMillis())).build();
     }
 
-//    return Response.ok(body)
-    return Response.status(Response.Status.ACCEPTED)
-             .entity(response)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
+    @Path("/{soId}/streams/{streamId}")
+    @PUT
+    @Produces("application/json")
+    public Response putSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId, String body) {
 
-  @Path("/{soId}/streams/{streamId}")
-  @GET
-  @Produces("application/json")
-  public Response getSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId) {
+        Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+        // Check if exists request data
+        if (body.isEmpty())
+            throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
 
-    // check if user exists
-    if (aut.getUserId() == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
-    }
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+        // check authorization -> same user and not public
+        aut.checkAuthorization(so);
 
+        // Create Data
+        Data data = new Data(so, streamId, body);
 
-//    // Get the Service Object Data
-    List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
-    List<Data> dataItems = new ArrayList<Data>();
+        // Create the response
+        String response = body;
 
-    PermissionCacheObject pco = new PermissionCacheObject();
-    Data data;
+        // Store in Couchbase
+        CouchBase.setData(data);
 
-    // TODO Shouldn't this also be in getLastUpdate?
-    for(String id : IDs) {
-        data = CouchBase.getData(id);
-        pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
-        if (pco.isPermission()) {
-        	Reputation.setReputation(soId, streamId, pco.getUserId(), data.getLastUpdate());
+        // Queueing
+        QueueClient sqc;
+        try {
+            sqc = QueueClient.factory("default.xml");
+            sqc.connect();
+            boolean res = sqc.put("{\"soid\": \"" + soId + "\", \"streamid\": \"" + streamId + "\", \"su\": "
+                    + data.getString() + "}");
+            if (!res) {
+                response = "{ \"message\" : \"Stored but not queued\" }";
+            }
+            sqc.disconnect();
 
-        	dataItems.add(data);
+        } catch (QueueClientException e) {
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "SQueueClientException " + e.getMessage());
+        } catch (Exception e) {
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "Undefined error in SQueueClient");
         }
+
+        // return Response.ok(body)
+        return Response.status(Response.Status.ACCEPTED)
+                       .entity(response)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
+    @Path("/{soId}/streams/{streamId}")
+    @DELETE
+    @Produces("application/json")
+    public Response deleteAllSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId, String body) {
 
-    if (dataItems == null || dataItems.size() == 0)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    // Generate response
-    String response = Data.responseAllData(dataItems);
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    if (response == null)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
 
-    return Response.ok(response)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
+        List<String> ids = SearchEngine.getAllUpdatesId(soId, streamId);
+        for (String id : ids) {
+            CouchBase.deleteData(id);
+        }
 
-  @Path("/{soId}/streams/{streamId}/lastUpdate")
-  @GET
-  @Produces("application/json")
-  public Response getLastUpdate(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId) {
+        return Response.noContent().header("Server", "api.servIoTicy")
+                                   .header("Date", new Date(System.currentTimeMillis()))
+                                   .build();
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // check if user exists
-    if (aut.getUserId() == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
     }
 
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+    @Path("/{soId}/streams/{streamId}")
+    @GET
+    @Produces("application/json")
+    public Response getSOData(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId) {
 
-    // Get the Service Object Data
-    long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId,streamId);
-    Data data = CouchBase.getData(soId, streamId, lastUpdate);
-    
-    if (data == null)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    PermissionCacheObject pco = new PermissionCacheObject();
-    pco = aut.checkAuthorizationData(so, data.getSecurity(), pco, PDP.operationID.RetrieveServiceObjectData);
-    if (data.getSecurity() == null || !pco.isPermission())
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-    
-    Reputation.setReputation(soId, streamId, pco.getUserId(), data.getLastUpdate());
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
 
-    return Response.ok(data.responseLastUpdate())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
 
+        // Get the Service Object Data
+        List<String> IDs = SearchEngine.getAllUpdatesId(so.getId(), streamId);
+        List<Data> dataItems = new ArrayList<Data>();
 
-  @Path("/{soId}/streams/{streamId}/search")
-  @POST
-  @Produces("application/json")
-  public Response searchUpdates(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId, String body) {
+        Data data;
 
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+        // TODO Shouldn't this also be in getLastUpdate?
+        for (String id : IDs) {
+            data = CouchBase.getData(id);
+            Reputation.setReputation(soId, streamId, auth.getUserId(), data.getLastUpdate());
+            dataItems.add(data);
+        }
 
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+        if (dataItems == null || dataItems.size() == 0)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
 
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.SearchUpdates);
+        // Generate response
+        String response = Data.responseAllData(dataItems);
 
+        if (response == null)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
 
-    SearchCriteria filter = SearchCriteria.buildFromJson(body);
+        return Response.ok(response)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
 
-//  // Get the Service Object Data
-    List<String> IDs = SearchEngine.searchUpdates(soId, streamId, filter);
-    List<Data> dataItems = new ArrayList<Data>();
+    @Path("/{soId}/streams/{streamId}/lastUpdate")
+    @GET
+    @Produces("application/json")
+    public Response getLastUpdate(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId) {
 
-    for(String id : IDs)
-        dataItems.add(CouchBase.getData(id));
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
 
-    if (dataItems == null || dataItems.size() == 0)
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        // Get the Service Object Data
+        long lastUpdate = SearchEngine.getLastUpdateTimeStamp(soId, streamId);
+        Data data = CouchBase.getData(soId, streamId, lastUpdate);
+
+        if (data == null)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
+
+        Reputation.setReputation(soId, streamId, auth.getUserId(), data.getLastUpdate());
+
+        return Response.ok(data.responseLastUpdate())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/streams/{streamId}/search")
+    @POST
+    @Produces("application/json")
+    public Response searchUpdates(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId, String body) {
+
+        Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        aut.checkAuthorization(so);
+
+        SearchCriteria filter = SearchCriteria.buildFromJson(body);
+
+        // Get the Service Object Data
+        List<String> IDs = SearchEngine.searchUpdates(soId, streamId, filter);
+        List<Data> dataItems = new ArrayList<Data>();
+
+        for (String id : IDs)
+            dataItems.add(CouchBase.getData(id));
+
+        if (dataItems == null || dataItems.size() == 0)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
+
+        // Generate response
+        String response = Data.responseAllData(dataItems);
+
+        if (response == null)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
+
+        return Response.ok(response)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/streams/{streamId}/subscriptions")
+    @POST
+    @Produces("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createSubscription(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId, String body) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Check if exists request data
+        if (body.isEmpty())
+            throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        // Create Subscription
+        Subscription subs = new Subscription(auth.getAcces_Token(), auth.getUserId(), so, streamId, body);
+
+        // Store in Couchbase
+        CouchBase.setSubscription(subs);
+
+        // Construct the access subscription URI
+        UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+        URI subsUri = ub.path(subs.getId()).build();
+
+        return Response.created(subsUri)
+                       .entity(subs.responseCreateSubs())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/streams/{streamId}/subscriptions")
+    @GET
+    @Produces("application/json")
+    public Response getSubscriptions(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("streamId") String streamId) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        // Generate response
+        String response = so.responseSubscriptions(streamId, true);
+
+        if (response == null)
+            return Response.noContent()
+                           .header("Server", "api.servIoTicy")
+                           .header("Date", new Date(System.currentTimeMillis()))
+                           .build();
+
+        return Response.ok(response)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/subscriptions/{subsId}")
+    @DELETE
+    @Produces("application/json")
+    public Response deleteSubscription(@Context HttpHeaders hh, @PathParam("subsId") String subsId, String body) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object associated with the Subscription
+        Subscription subs = CouchBase.getSubscription(subsId);
+        if (subs == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
+
+        // check authorization -> owner
+        auth.checkOwner(subs.getSO());
+
+        CouchBase.deleteSubscription(subs.getKey());
+
         return Response.noContent()
-               .header("Server", "api.servIoTicy")
-               .header("Date", new Date(System.currentTimeMillis()))
-               .build();
-
-      // Generate response
-      String response = Data.responseAllData(dataItems);
-
-
-    if (response == null)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-
-    return Response.ok(response)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}/streams/{streamId}/subscriptions")
-  @POST
-  @Produces("application/json")
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response createSubscription(@Context HttpHeaders hh, @PathParam("soId") String soId ,
-                    @PathParam("streamId") String streamId, String body) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // check if user exists
-    String userId = aut.getUserId();
-    if (userId == null) {
-        throw new ServIoTWebApplicationException(Response.Status.UNAUTHORIZED,
-                "Authentication failed, wrong credentials");
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
     }
 
-    // Check if exists request data
-    if (body.isEmpty())
-      throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.CreateNewSubscription);
-
-//    String test = IDM.getInformationForUser(aut.getAcces_Token());
-//    System.out.printf(test);
-
-    // Create Subscription
-    Subscription subs = new Subscription(aut.getAcces_Token(), userId, so, streamId, body);
-
-    // Store in Couchbase
-    CouchBase.setSubscription(subs);
-
-    // Construct the access subscription URI
-    UriBuilder ub = uriInfo.getAbsolutePathBuilder();
-    URI subsUri = ub.path(subs.getId()).build();
-
-    return Response.created(subsUri)
-             .entity(subs.responseCreateSubs())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}/streams/{streamId}/subscriptions")
-  @GET
-  @Produces("application/json")
-  public Response getSubscriptions(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                    @PathParam("streamId") String streamId) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.GetSubscriptions);
-
-    // Generate response
-    String response = so.responseSubscriptions(streamId, true);
-
-    if (response == null)
-      return Response.noContent()
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-
-    return Response.ok(response)
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/subscriptions/{subsId}")
-  @DELETE
-  @Produces("application/json")
-  public Response deleteSubscription(@Context HttpHeaders hh,
-                    @PathParam("subsId") String subsId, String body) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-    
-    // Get the Service Object associated with the Subscription
-    Subscription subs = CouchBase.getSubscription(subsId);
-    if (subs == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
-
-    aut.checkAuthorization(subs.getSO(), PDP.operationID.DeleteSpecificSubscription);
-
-    CouchBase.deleteSubscription(subs.getKey());
-
-    return Response.noContent()
-    .header("Server", "api.servIoTicy")
-    .header("Date", new Date(System.currentTimeMillis()))
-    .build();
-
-  }
-
-  @Path("/subscriptions/{subsId}")
-  @GET
-  @Produces("application/json")
-  public Response getSubscription(@Context HttpHeaders hh,
-                    @PathParam("subsId") String subsId) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    Subscription subs = CouchBase.getSubscription(subsId);
-    if (subs == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(subs.getSO(), PDP.operationID.GetSpecificSubscription); // TODO check owner, only delete if is the owner
-
-
-    return Response.ok(subs.responseGetSubs())
-    .header("Server", "api.servIoTicy")
-    .header("Date", new Date(System.currentTimeMillis()))
-    .build();
-  }
-
-  @Path("/{soId}/actuations")
-  @GET
-  @Produces("application/json")
-  public Response getActuations(@Context HttpHeaders hh, @PathParam("soId") String soId) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.GetActuations);
-
-
-    return Response.ok(so.getActuationsString())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-  @Path("/{soId}/actuations/{actionId}")
-  @GET
-  @Produces("application/json")
-  public Response getActuationStatus(@Context HttpHeaders hh, @PathParam("soId") String soId,
-                                @PathParam("actionId") String actionId) {
-
-    Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-    // Get the Service Object
-    SO so = CouchBase.getSO(soId);
-    if (so == null)
-      throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-    // check authorization -> same user and not public
-    aut.checkAuthorization(so, PDP.operationID.GetActuationStatus);
-
-    Actuation act = CouchBase.getActuation(actionId);
-
-    return Response.ok(act.toString())
-             .header("Server", "api.servIoTicy")
-             .header("Date", new Date(System.currentTimeMillis()))
-             .build();
-  }
-
-
-  @Path("/{soId}/actuations/{actuationName}")
-  @POST
-  @Produces("application/json")
-  //@Consumes(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.TEXT_PLAIN)
-  public Response launchActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
-          @PathParam("actuationName") String actuationName, String body) {
-
-      Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-      // Get the Service Object
-      SO so = CouchBase.getSO(soId);
-      if (so == null)
-          throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-      // check authorization -> same user and not public
-      aut.checkAuthorization(so, PDP.operationID.LaunchActuation);
-      //TODO: check ownership?
-
-      Actuation act = new Actuation(so, actuationName, body);
-
-
-      String response;
-      // Queueing
-      QueueClient sqc; //soid, streamid, body
-      try {
-          sqc = QueueClient.factory("defaultActions.xml");
-          sqc.connect();
-          System.out.println("Sending to kestrel... : "+
-                  "{\"soid\": \"" + soId +
-                  "\", \"id\": \"" + act.getId() +
-                  "\", \"name\": \"" + actuationName +
-                  "\", \"action\": " + act.toString()+ "}");
-
-          boolean res = sqc.put(
-                  "{\"soid\": \"" + soId +
-                  "\", \"id\": \"" + act.getId() +
-                  "\", \"name\": \"" + actuationName +
-                  "\", \"action\": " + act.toString() + "}");
-
-          if (res) {
-              response = "{ \"message\" : \"Actuation submitted\", " +
-              "\"id\" : \""+act.getId()+
-              "\"  }";
-          } else {
-              throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                      "Undefined error in SQueueClient ");
-          }
-
-          sqc.disconnect();
-
-      } catch (QueueClientException e) {
-          System.out.println("Found exception: "+e+"\nmessage: "+e.getMessage());
-          throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                  "SQueueClientException " + e.getMessage());
-      } catch (Exception e) {
-          throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
-                  "Undefined error in SQueueClient");
-      }
-
-
-      // Store in Couchbase for status tracking
-      CouchBase.setActuation(act);
-
-
-      // Construct the access subscription URI
-      UriBuilder ub = uriInfo.getAbsolutePathBuilder();
-      URI actUri = ub.path("../"+act.getId()).build();
-
-      return Response.created(actUri)
-      .entity(response)
-      .header("Server", "api.servIoTicy")
-      .header("Date", new Date(System.currentTimeMillis()))
-      .build();
-
-
-  }
-
-  @Path("/{soId}/actuations/{actuationId}")
-  @PUT
-  @Produces("application/json")
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response updateActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
-          @PathParam("actuationId") String actuationId, String body) {
-
-      Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
-
-      // Check if exists request data
-      if (body.isEmpty())
-          throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
-
-      // Get the Service Object
-
-      SO so = CouchBase.getSO(soId);
-      if (so == null)
-          throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
-
-      // check authorization -> same user and not public
-      aut.checkAuthorization(so, PDP.operationID.UpdateActuation);
-      //TODO: check ownership?
-
-      // Store again in Couchbase for status tracking
-      Actuation act = CouchBase.getActuation(actuationId);
-
-      act.updateStatus(body);
-
-      // Store again in Couchbase for status tracking
-      CouchBase.setActuation(act);
-
-      // Construct the access subscription URI
-      UriBuilder ub = uriInfo.getAbsolutePathBuilder();
-      URI actUri = ub.path(act.getId()).build();
-
-      return Response.created(actUri)
-      .entity(act.getStatus())
-      .header("Server", "api.servIoTicy")
-      .header("Date", new Date(System.currentTimeMillis()))
-      .build();
-  }
-
+    @Path("/subscriptions/{subsId}")
+    @GET
+    @Produces("application/json")
+    public Response getSubscription(@Context HttpHeaders hh, @PathParam("subsId") String subsId) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Subscription
+        Subscription subs = CouchBase.getSubscription(subsId);
+        if (subs == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Subscription was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(subs.getSO());
+
+        return Response.ok(subs.responseGetSubs())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/actuations")
+    @GET
+    @Produces("application/json")
+    public Response getActuations(@Context HttpHeaders hh, @PathParam("soId") String soId) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        return Response.ok(so.getActuationsString())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/actuations/{actionId}")
+    @GET
+    @Produces("application/json")
+    public Response getActuationStatus(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("actionId") String actionId) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        Actuation act = CouchBase.getActuation(actionId);
+
+        return Response.ok(act.toString())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/actuations/{actuationName}")
+    @POST
+    @Produces("application/json")
+    // @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.TEXT_PLAIN)
+    public Response launchActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("actuationName") String actuationName, String body) {
+
+        Authorization aut = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        aut.checkAuthorization(so);
+
+        Actuation act = new Actuation(so, actuationName, body);
+
+        String response;
+        // Queueing
+        QueueClient sqc; // soid, streamid, body
+        try {
+            sqc = QueueClient.factory("defaultActions.xml");
+            sqc.connect();
+            System.out.println("Sending to kestrel... : " + "{\"soid\": \"" + soId + "\", \"id\": \"" + act.getId()
+                    + "\", \"name\": \"" + actuationName + "\", \"action\": " + act.toString() + "}");
+
+            boolean res = sqc.put("{\"soid\": \"" + soId + "\", \"id\": \"" + act.getId() + "\", \"name\": \""
+                    + actuationName + "\", \"action\": " + act.toString() + "}");
+
+            if (res) {
+                response = "{ \"message\" : \"Actuation submitted\", " + "\"id\" : \"" + act.getId() + "\"  }";
+            } else {
+                throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                        "Undefined error in SQueueClient ");
+            }
+
+            sqc.disconnect();
+
+        } catch (QueueClientException e) {
+            System.out.println("Found exception: " + e + "\nmessage: " + e.getMessage());
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "SQueueClientException " + e.getMessage());
+        } catch (Exception e) {
+            throw new ServIoTWebApplicationException(Response.Status.INTERNAL_SERVER_ERROR,
+                    "Undefined error in SQueueClient");
+        }
+
+        // Store in Couchbase for status tracking
+        CouchBase.setActuation(act);
+
+        // Construct the access subscription URI
+        UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+        URI actUri = ub.path("../" + act.getId()).build();
+
+        return Response.created(actUri)
+                       .entity(response)
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
+
+    @Path("/{soId}/actuations/{actuationId}")
+    @PUT
+    @Produces("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateActuation(@Context HttpHeaders hh, @PathParam("soId") String soId,
+            @PathParam("actuationId") String actuationId, String body) {
+
+        Authorization auth = (Authorization) this.servletRequest.getAttribute("aut");
+
+        // Check if exists request data
+        if (body.isEmpty())
+            throw new ServIoTWebApplicationException(Response.Status.BAD_REQUEST, "No data in the request");
+
+        // Get the Service Object
+        SO so = CouchBase.getSO(soId);
+        if (so == null)
+            throw new ServIoTWebApplicationException(Response.Status.NOT_FOUND, "The Service Object was not found.");
+
+        // check authorization -> owner and not public
+        auth.checkAuthorization(so);
+
+        // Store again in Couchbase for status tracking
+        Actuation act = CouchBase.getActuation(actuationId);
+
+        act.updateStatus(body);
+
+        // Store again in Couchbase for status tracking
+        CouchBase.setActuation(act);
+
+        // Construct the access subscription URI
+        UriBuilder ub = uriInfo.getAbsolutePathBuilder();
+        URI actUri = ub.path(act.getId()).build();
+
+        return Response.created(actUri)
+                       .entity(act.getStatus())
+                       .header("Server", "api.servIoTicy")
+                       .header("Date", new Date(System.currentTimeMillis()))
+                       .build();
+    }
 
 }
