@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <QueueClientConf>
 	<className>com.servioticy.queueclient.KafkaClient</className>
-	<address>localhost:2181</address>
-	<queueName>updates</queueName>
+	<address>172.20.11.1:9092 172.20.11.2:9092 172.20.11.3:9092 172.20.11.4:9092</address>
+	<queueName>updates-secure</queueName>
 	<classConf>
 	</classConf>
 </QueueClientConf>

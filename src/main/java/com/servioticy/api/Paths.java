@@ -128,7 +128,8 @@ public class Paths {
                           so.getId() +
                           "/dyngroups/" +
                           dyngroupMap.getKey() +
-                          "/" + accessToken
+                          "/1/" +
+                          accessToken
           );
           StringEntity input = new StringEntity("");
           input.setContentType("application/json");
