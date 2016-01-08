@@ -292,6 +292,7 @@ public class Paths {
 
         // Create Data
         Data data = new Data(so, streamId, body);
+        data.setInitProvenance(so.getId(), streamId);
 
         // Create the response
         String response = body;
